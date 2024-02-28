@@ -1,0 +1,77 @@
+<!-- MuJoCo simulation model for a UAV (Unmanned Aerial Vehicle) -->
+<mujoco model="UAV">
+  <!-- Compiler settings to automatically compute inertia from geometry and set assets directory -->
+  <compiler inertiafromgeom="true" assetdir="assets"/>
+
+  <!-- Simulation options including timestep, gravity, solver iterations, integration method, air density, and air viscosity -->
+  <option timestep="0.01" gravity="0 0 -9.81" iterations="50" integrator="Euler" density="1.225" viscosity="1.8e-5"/>
+
+  <!-- Asset definitions for UAV components -->
+  <asset>
+    <!-- Mesh for the drone body -->
+    <mesh name="drone_body" file="drone.stl"/>
+    <!-- Mesh for clockwise rotating propellers -->
+    <mesh name="cw_prop_mesh" file="cw_prop.stl"/>
+    <!-- Mesh for counter-clockwise rotating propellers -->
+    <mesh name="ccw_prop_mesh" file="ccw_prop.stl"/>
+  </asset>
+
+  <!-- Default properties for joints, geometries, and motors -->
+  <default>
+    <!-- Joint properties: low damping to allow free rotation -->
+    <joint damping="0.01"/>
+    <!-- Geometric properties: friction, density, and collision margin -->
+    <geom friction="1 0.5 0.5" density="1000" margin="0.01"/>
+    <!-- Motor properties: control range -->
+    <motor ctrlrange="0.0 10.0"/>
+  </default>
+
+  <!-- World body definition -->
+  <worldbody>
+    <!-- Main UAV body -->
+    <body name="uav" pos="0 0 0">
+      <!-- Free joint for UAV body to allow free movement in the environment -->
+      <freejoint/>
+      <!-- Drone body geometry -->
+      <geom name="drone_geom" type="mesh" mesh="drone_body" mass="10"/>
+
+      <!-- Clockwise rotating propellers -->
+      <body name="prop1" pos="0.176777 0.176777 0.125">
+        <joint name="prop1_joint" type="hinge" axis="0 0 1" limited="false"/>
+        <geom type="mesh" mesh="cw_prop_mesh" mass="0.025"/>
+        <!-- Site for applying thrust force -->
+        <site name="prop1_thrust" pos="0 0 -0.025"/>
+      </body>
+      <body name="prop2" pos="-0.176777 -0.176777 0.125">
+        <joint name="prop2_joint" type="hinge" axis="0 0 1" limited="false"/>
+        <geom type="mesh" mesh="cw_prop_mesh" mass="0.025"/>
+        <!-- Site for applying thrust force -->
+        <site name="prop2_thrust" pos="0 0 -0.025"/>
+      </body>
+
+      <!-- Counter-clockwise rotating propellers -->
+      <body name="prop3" pos="0.176777 -0.176777 0.125">
+        <joint name="prop3_joint" type="hinge" axis="0 0 1" limited="false"/>
+        <geom type="mesh" mesh="ccw_prop_mesh" mass="0.025"/>
+        <!-- Site for applying thrust force -->
+        <site name="prop3_thrust" pos="0 0 -0.025"/>
+      </body>
+      <body name="prop4" pos="-0.176777 0.176777 0.125">
+        <joint name="prop4_joint" type="hinge" axis="0 0 1" limited="false"/>
+        <geom type="mesh" mesh="ccw_prop_mesh" mass="0.025"/>
+        <!-- Site for applying thrust force -->
+        <site name="prop4_thrust" pos="0 0 -0.025"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <!-- Actuator definitions for controlling UAV propellers -->
+  <actuator>
+    <!-- Motors for clockwise propellers with specified gear ratios -->
+    <motor name="motor1" site="prop1_thrust" gear="0 0 10 0 0 -1"/>
+    <motor name="motor2" site="prop2_thrust" gear="0 0 10 0 0 -1"/>
+    <!-- Motors for counter-clockwise propellers with specified gear ratios -->
+    <motor name="motor3" site="prop3_thrust" gear="0 0 10 0 0 1"/>
+    <motor name="motor4" site="prop4_thrust" gear="0 0 10 0 0 1"/>
+  </actuator>
+</mujoco>
