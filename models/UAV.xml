@@ -1,4 +1,4 @@
-<!-- MuJoCo simulation model for a UAV (Unmanned Aerial Vehicle) -->
+<!-- MuJoCo simulation model for a models (Unmanned Aerial Vehicle) -->
 <mujoco model="UAV">
   <!-- Compiler settings to automatically compute inertia from geometry and set assets directory -->
   <compiler inertiafromgeom="true" assetdir="assets"/>
@@ -6,7 +6,7 @@
   <!-- Simulation options including timestep, gravity, solver iterations, integration method, air density, and air viscosity -->
   <option timestep="0.01" gravity="0 0 -9.81" iterations="50" integrator="Euler" density="1.225" viscosity="1.8e-5"/>
 
-  <!-- Asset definitions for UAV components -->
+  <!-- Asset definitions for models components -->
   <asset>
     <!-- Mesh for the drone body -->
     <mesh name="drone_body" file="drone.stl"/>
@@ -28,9 +28,9 @@
 
   <!-- World body definition -->
   <worldbody>
-    <!-- Main UAV body -->
+    <!-- Main models body -->
     <body name="uav" pos="0 0 0">
-      <!-- Free joint for UAV body to allow free movement in the environment -->
+      <!-- Free joint for models body to allow free movement in the environment -->
       <freejoint/>
       <!-- Drone body geometry -->
       <geom name="drone_geom" type="mesh" mesh="drone_body" mass="10"/>
@@ -62,10 +62,23 @@
         <!-- Site for applying thrust force -->
         <site name="prop4_thrust" pos="0 0 -0.025"/>
       </body>
+      <site name="imu" pos="0 0 0.1" type="sphere" size="0.01"/>
+
+      <!-- Light Camera 1 -->
+      <camera name="light_cam_1" pos="0.0025 0.055 0.003" zaxis="0 1 0"/>
+
+      <!-- Light Camera 2 -->
+      <camera name="light_cam_2" pos="-0.0025 0.055 0.003" zaxis="0 1 0"/>
+
+      <!-- Infrared Camera 1 -->
+      <camera name="ir_cam_1" pos="0.0015 0.055 0.005" zaxis="0 1 0"/>
+
+      <!-- Infrared Camera 2 -->
+      <camera name="ir_cam_2" pos="-0.0015 0.055 0.005" zaxis="0 1 0"/>
     </body>
   </worldbody>
 
-  <!-- Actuator definitions for controlling UAV propellers -->
+  <!-- Actuator definitions for controlling models propellers -->
   <actuator>
     <!-- Motors for clockwise propellers with specified gear ratios -->
     <motor name="motor1" site="prop1_thrust" gear="0 0 10 0 0 -1"/>
@@ -74,4 +87,17 @@
     <motor name="motor3" site="prop3_thrust" gear="0 0 10 0 0 1"/>
     <motor name="motor4" site="prop4_thrust" gear="0 0 10 0 0 1"/>
   </actuator>
+
+  <!-- Sensor definitions for the IMU -->
+  <sensor>
+    <!-- Accelerometer with noise to simulate drift -->
+    <accelerometer name="imu_accel" site="imu" noise="0.01"/>
+
+    <!-- Gyroscope with noise to simulate drift -->
+    <gyro name="imu_gyro" site="imu" noise="0.005"/>
+
+    <!-- Optional: Orientation sensor -->
+    <framequat name="imu_orientation" objtype="body" objname="uav"/>
+  </sensor>
+
 </mujoco>

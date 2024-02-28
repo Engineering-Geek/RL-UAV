@@ -1,0 +1,49 @@
+<!-- MuJoCo simulation model for a simplified models (Unmanned Aerial Vehicle) -->
+<mujoco model="SimpleUAV">
+  <compiler inertiafromgeom="true"/>
+
+  <!-- Simulation options including timestep, gravity, solver iterations, integration method -->
+  <option timestep="0.01" gravity="0 0 -9.81" iterations="50" integrator="Euler"/>
+
+  <!-- World body definition -->
+  <worldbody>
+    <!-- Simplified models body represented by a box -->
+    <body name="uav" pos="0 0 0.1">
+      <freejoint/>
+      <geom type="box" size="0.05 0.05 0.05" density="1000"/>
+
+      <!-- Simplified propellers represented by cylinders -->
+      <geom type="cylinder" pos="0.05 0.05 0.08" size="0.01 0.005" density="500"/>
+      <geom type="cylinder" pos="-0.05 0.05 0.08" size="0.01 0.005" density="500"/>
+      <geom type="cylinder" pos="0.05 -0.05 0.08" size="0.01 0.005" density="500"/>
+      <geom type="cylinder" pos="-0.05 -0.05 0.08" size="0.01 0.005" density="500"/>
+
+      <!-- Sites for thrust application and sensor attachment -->
+      <site name="thrust1" pos="0.05 0.05 0.08" size="0.01"/>
+      <site name="thrust2" pos="-0.05 0.05 0.08" size="0.01"/>
+      <site name="thrust3" pos="0.05 -0.05 0.08" size="0.01"/>
+      <site name="thrust4" pos="-0.05 -0.05 0.08" size="0.01"/>
+      <site name="imu" pos="0 0 0.1" size="0.01"/>  <!-- IMU location -->
+
+      <!-- Simplified cameras represented by sites -->
+      <site name="light_cam_1" pos="0.0025 0 0.103" size="0.01"/>
+      <site name="light_cam_2" pos="-0.0025 0 0.103" size="0.01"/>
+      <site name="ir_cam_1" pos="0.0015 0 0.105" size="0.01"/>
+      <site name="ir_cam_2" pos="-0.0015 0 0.105" size="0.01"/>
+    </body>
+  </worldbody>
+
+  <!-- Actuator definitions for controlling propeller thrust -->
+  <actuator>
+    <motor name="motor1" site="thrust1" ctrllimited="true" ctrlrange="0 10" gear="0 0 1 0 0 0"/>
+    <motor name="motor2" site="thrust2" ctrllimited="true" ctrlrange="0 10" gear="0 0 1 0 0 0"/>
+    <motor name="motor3" site="thrust3" ctrllimited="true" ctrlrange="0 10" gear="0 0 1 0 0 0"/>
+    <motor name="motor4" site="thrust4" ctrllimited="true" ctrlrange="0 10" gear="0 0 1 0 0 0"/>
+  </actuator>
+
+  <!-- Sensor definitions for the IMU -->
+  <sensor>
+    <accelerometer name="imu_accel" site="imu"/>
+    <gyro name="imu_gyro" site="imu"/>
+  </sensor>
+</mujoco>
