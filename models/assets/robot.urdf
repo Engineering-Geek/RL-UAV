@@ -1,0 +1,154 @@
+<robot name="onshape">
+<link name="drone">
+<visual>
+<origin xyz="0 0 0" rpy="0 -0 0" />
+<geometry>
+<mesh filename="package:///drone.stl"/>
+</geometry>
+<material name="drone_material">
+<color rgba="0.80000000000000004441 0.80000000000000004441 0.80000000000000004441 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 0" rpy="0 -0 0" />
+<geometry>
+<mesh filename="package:///drone.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="1.2239378051885043882e-09 -0.00032786939490451539377 0.067732578421797404178" rpy="0 0 0"/>
+<mass value="4.9662325177561648104" />
+<inertia ixx="0.051118844827761036886" ixy="-1.4426948865062746522e-10"  ixz="3.4770699642280603364e-11" iyy="0.050954795900788482643" iyz="-0.00010870717357604535675" izz="0.091927675634172215102" />
+</inertial>
+</link>
+
+<link name="cw_prop">
+<visual>
+<origin xyz="0 0 -0.024999999999999994449" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///cw_prop.stl"/>
+</geometry>
+<material name="cw_prop_material">
+<color rgba="0.90196078431372550543 0.90196078431372550543 0.90196078431372550543 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 -0.024999999999999994449" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///cw_prop.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="-3.6959481262210059863e-15 -3.0277744087355154163e-15 -0.029358430292064714023" rpy="0 0 0"/>
+<mass value="0.034770577449106179757" />
+<inertia ixx="8.6898169885294163512e-06" ixy="-6.542824988075482568e-07"  ixz="0" iyy="4.2234858488567244888e-05" iyz="0" izz="3.6222515135574245566e-05" />
+</inertial>
+</link>
+
+<joint name="back_left_motor_continuous" type="continuous">
+<origin xyz="0.17677669529663697645 0.17677669529663692094 0.10000000000000000555" rpy="3.141592653589793116 -0 0" />
+<parent link="drone" />
+<child link="cw_prop" />
+<axis xyz="0 0 1"/>
+<limit effort="1" velocity="20" />
+<joint_properties friction="0.0"/>
+</joint>
+
+<link name="cw_prop_2">
+<visual>
+<origin xyz="0 0 -0.024999999999999994449" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///cw_prop.stl"/>
+</geometry>
+<material name="cw_prop_material">
+<color rgba="0.90196078431372550543 0.90196078431372550543 0.90196078431372550543 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 -0.024999999999999994449" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///cw_prop.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="-3.6959481262210059863e-15 -3.0277744087355154163e-15 -0.029358430292064714023" rpy="0 0 0"/>
+<mass value="0.034770577449106179757" />
+<inertia ixx="8.6898169885294163512e-06" ixy="-6.542824988075482568e-07"  ixz="0" iyy="4.2234858488567244888e-05" iyz="0" izz="3.6222515135574245566e-05" />
+</inertial>
+</link>
+
+<joint name="front_right_motor_continuous" type="continuous">
+<origin xyz="-0.17677669529663675441 -0.17677669529663692094 0.10000000000000000555" rpy="3.141592653589793116 -0 0" />
+<parent link="drone" />
+<child link="cw_prop_2" />
+<axis xyz="0 0 1"/>
+<limit effort="1" velocity="20" />
+<joint_properties friction="0.0"/>
+</joint>
+
+<link name="ccw_prop">
+<visual>
+<origin xyz="-2.0816681711721685133e-17 0 -0.024999999999999994449" rpy="3.141592653589793116 -0 -5.6191213664311276259e-17" />
+<geometry>
+<mesh filename="package:///ccw_prop.stl"/>
+</geometry>
+<material name="ccw_prop_material">
+<color rgba="0.90196078431372550543 0.90196078431372550543 0.90196078431372550543 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="-2.0816681711721685133e-17 0 -0.024999999999999994449" rpy="3.141592653589793116 -0 -5.6191213664311276259e-17" />
+<geometry>
+<mesh filename="package:///ccw_prop.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="-6.4029758310978787517e-15 -4.0747876998570415555e-15 -0.029222789476407211307" rpy="0 0 0"/>
+<mass value="0.034329129143441002026" />
+<inertia ixx="8.6209299049594435036e-06" ixy="6.5052327811857551736e-07"  ixz="0" iyy="4.2147328298222342345e-05" iyz="0" izz="3.6178916570750522782e-05" />
+</inertial>
+</link>
+
+<joint name="front_left_motor_continuous" type="continuous">
+<origin xyz="0.17677669529663683767 -0.17677669529663689318 0.10000000000000000555" rpy="3.141592653589793116 -0 0.96173002211298075359" />
+<parent link="drone" />
+<child link="ccw_prop" />
+<axis xyz="0 0 1"/>
+<limit effort="1" velocity="20" />
+<joint_properties friction="0.0"/>
+</joint>
+
+<link name="ccw_prop_2">
+<visual>
+<origin xyz="0 0 -0.024999999999999994449" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///ccw_prop.stl"/>
+</geometry>
+<material name="ccw_prop_material">
+<color rgba="0.90196078431372550543 0.90196078431372550543 0.90196078431372550543 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 -0.024999999999999994449" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///ccw_prop.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="-6.3821591493861570665e-15 -4.0747876998570407666e-15 -0.029222789476407211307" rpy="0 0 0"/>
+<mass value="0.034329129143441002026" />
+<inertia ixx="8.6209299049594435036e-06" ixy="6.5052327811857435269e-07"  ixz="0" iyy="4.2147328298222328793e-05" iyz="0" izz="3.6178916570750522782e-05" />
+</inertial>
+</link>
+
+<joint name="back_right_motor_continuous" type="continuous">
+<origin xyz="-0.17677669529663686543 0.17677669529663683767 0.10000000000000000555" rpy="3.141592653589793116 -0 0" />
+<parent link="drone" />
+<child link="ccw_prop_2" />
+<axis xyz="0 0 1"/>
+<limit effort="1" velocity="20" />
+<joint_properties friction="0.0"/>
+</joint>
+
+
+</robot>
