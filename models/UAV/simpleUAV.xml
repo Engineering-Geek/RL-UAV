@@ -1,0 +1,20 @@
+<mujoco>
+
+    <default>
+        <geom friction="1 0.5 0.5" density="1000" margin="0.01"/>
+        <joint damping="0.01"/>
+        <motor ctrlrange="0.0 10.0"/>
+        <body class="arm" pos="0 0 0.1">
+            <geom type="box" size="0.1 0.1 0.02" mass=".2"/>
+            <body class="prop" pos="0 0 0.1">
+                <geom type="cylinder" size="0.01 0.01" mass="0.025"/>
+                <joint type="hinge" axis="0 0 1" limited="false"/>
+                <site name="thrust" pos="0 0 -0.025"/>
+            </body>
+        </body>
+    </default>
+
+    <worldbody>
+
+    </worldbody>
+</mujoco>
