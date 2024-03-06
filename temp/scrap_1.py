@@ -1,5 +1,6 @@
 from mujoco import MjModel
-from mujoco.mjx import make_data, step
+from mujoco.mjx import make_data, step, get_data
+from time import time
 
 from brax.io import mjcf
 
@@ -13,17 +14,12 @@ mjx_model = mjcf.load_model(model)
 mjx_data = make_data(mjx_model)
 
 # Step the simulation
-for _ in range(5):
-    mjx_data = step(mjx_model, mjx_data)
+start = time()
+mjx_data = step(mjx_model, mjx_data)
+print(f"Time taken: {time() - start}")
+# Print the current position of the drone
 
-# Access sensor data from mjx_data
-# mjx_data exposes the sensor data similarly to MjData, but the access might differ slightly
-# depending on the Brax version and its integration with mjx
-sensor_data = mjx_data.sensordata  # This will give you an array of all sensor data
-print(sensor_data)
+print(mjx_data.qpos)
 
-# If you know the specific index or name of the sensor, you can access it directly
-# For example, if you know the index of a sensor is 0, you can do:
-specific_sensor_data = sensor_data[0]
-
-print(specific_sensor_data)
+# cast mjx_data to MjData
+# data = get_data(model, mjx_data)
