@@ -1,6 +1,6 @@
 import jax.numpy as jnp
 import jax
-from TrainingRegimes.mjx.SimpleRegimes import HoverRegime
+from temp.mjx.SimpleRegimes import HoverRegime
 from brax.mjx.base import State as MjxState
 from brax.base import State as BraxState
 

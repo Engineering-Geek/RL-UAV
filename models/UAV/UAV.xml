@@ -9,7 +9,7 @@
   <!-- Asset definitions for models components -->
   <asset>
     <!-- Mesh for the drone body -->
-    <mesh name="drone_body" file="drone.stl"/>
+    <mesh name="drone" file="drone.stl"/>
     <!-- Mesh for clockwise rotating propellers -->
     <mesh name="cw_prop_mesh" file="cw_prop.stl"/>
     <!-- Mesh for counter-clockwise rotating propellers -->
@@ -29,11 +29,11 @@
   <!-- World body definition -->
   <worldbody>
     <!-- Main models body -->
-    <body name="uav" pos="0 0 0">
+    <body name="drone" pos="0 0 0">
       <!-- Free joint for models body to allow free movement in the environment -->
       <freejoint/>
       <!-- Drone body geometry -->
-      <geom name="drone_geom" type="mesh" mesh="drone_body" mass="10"/>
+      <geom name="drone" type="mesh" mesh="drone" mass="10"/>
 
       <!-- Clockwise rotating propellers -->
       <body name="prop1" pos="0.176777 0.176777 0.125">
@@ -65,16 +65,20 @@
       <site name="imu" pos="0 0 0.1" type="sphere" size="0.01"/>
 
       <!-- Light Camera 1 -->
-      <camera name="light_cam_1" pos="0.0025 0.055 0.003" zaxis="0 -1 0" resolution="64 64"/>
+      <camera name="camera_1" pos="0.0025 0.055 0.003" zaxis="0 -1 0" resolution="64 64"/>
 
       <!-- Light Camera 2 -->
-      <camera name="light_cam_2" pos="-0.0025 0.055 0.003" zaxis="0 -1 0" resolution="64 64"/>
+      <camera name="camera_2" pos="-0.0025 0.055 0.003" zaxis="0 -1 0" resolution="64 64"/>
 
       <!-- Infrared Camera 1 -->
-      <camera name="ir_cam_1" pos="0.0015 0.055 0.005" zaxis="0 -1 0" resolution="64 64"/>
+      <camera name="camera_3" pos="0.0015 0.055 0.005" zaxis="0 -1 0" resolution="64 64"/>
 
       <!-- Infrared Camera 2 -->
-      <camera name="ir_cam_2" pos="-0.0015 0.055 0.005" zaxis="0 -1 0" resolution="64 64"/>
+      <camera name="camera_4" pos="-0.0015 0.055 0.005" zaxis="0 -1 0" resolution="64 64"/>
+    </body>
+    <body name="target" pos="1 1 1">
+      <freejoint/>
+      <geom name="target" type="box" size="0.1 0.1 0.1" rgba="0 1 0 1"/>
     </body>
   </worldbody>
 
@@ -97,7 +101,7 @@
     <gyro name="imu_gyro" site="imu" noise="0.005"/>
 
     <!-- Optional: Orientation sensor -->
-    <framequat name="imu_orientation" objtype="body" objname="uav"/>
+    <framequat name="imu_orientation" objtype="body" objname="drone"/>
   </sensor>
 
 </mujoco>

@@ -6,7 +6,7 @@ from brax import envs
 from jax import numpy as jnp, lax
 from jax import Array
 
-from TrainingRegimes.mjx.BaseRegime import BaseRegime
+from temp.mjx.BaseRegime import BaseRegime
 
 
 class HoverRegime(BaseRegime):
