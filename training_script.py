@@ -1,7 +1,7 @@
-from gym_drone.gym_drone import SuicideDroneEnv
+from TrainingRegimes.SuicideRegime import SuicideRegime
 import numpy as np
 
-environment = SuicideDroneEnv(
+environment = SuicideRegime(
     tolerance_distance=0.1,
     max_time=20,
     reward_goal=100,
@@ -18,7 +18,7 @@ observation = environment.reset()
 
 for _ in range(1000):
     action = environment.action_space.sample()
-    observation, reward, done, info = environment.step(action)
+    observation, reward, truncated, done, info = environment.step(action)
     if done:
         observation = environment.reset()
 

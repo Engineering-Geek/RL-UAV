@@ -20,6 +20,18 @@ XML_PATH = os.path.join(os.path.dirname(__file__), "assets/UAV/scene.xml")
 
 # region Drone and Target Classes
 class Drone:
+    """
+    The Drone class represents a drone in the simulation.
+
+    :param data: The MjData instance from the simulation
+    :type data: MjData
+    :param spawn_box: The box in which the drone can spawn
+    :type spawn_box: np.ndarray
+    :param spawn_max_velocity: The maximum velocity at which the drone can spawn
+    :type spawn_max_velocity: float
+    :param rng: The random number generator used for spawning the drone
+    :type rng: np.random.Generator, optional
+    """
     def __init__(self,
                  data: MjData,
                  spawn_box: np.ndarray,
@@ -77,14 +89,27 @@ class Drone:
     
     def reset(self):
         """
-        Reset the drone's position, orientation, velocity, and angular velocity
-        :return:
+        Reset the drone's position, orientation, velocity, and angular velocity.
         """
         self.position = self.spawn_box[0] + (self.spawn_box[1] - self.spawn_box[0]) * self.rng.random(3)
         self.velocity = self.spawn_max_velocity * self.rng.random(3)
 
 
 class Target:
+    """
+    The Target class represents a target in the simulation.
+
+    :param data: The MjData instance from the simulation
+    :type data: MjData
+    :param spawn_box: The box in which the target can spawn
+    :type spawn_box: np.ndarray
+    :param spawn_max_velocity: The maximum velocity at which the target can spawn
+    :type spawn_max_velocity: float
+    :param spawn_max_angular_velocity: The maximum angular velocity at which the target can spawn
+    :type spawn_max_angular_velocity: float
+    :param rng: The random number generator used for spawning the target
+    :type rng: np.random.Generator, optional
+    """
     def __init__(self,
                  data: MjData,
                  spawn_box: np.ndarray,
@@ -133,8 +158,7 @@ class Target:
     
     def reset(self):
         """
-        Reset the target's position, orientation, velocity, and angular velocity
-        :return:
+        Reset the target's position, orientation, velocity, and angular velocity.
         """
         self.position = self.spawn_box[0] + (self.spawn_box[1] - self.spawn_box[0]) * self.rng.random(3)
         self.velocity = self.spawn_max_velocity * self.rng.random(3)
@@ -147,6 +171,9 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     _BaseRegime is a custom environment that extends the
     MujocoEnv. It is designed to simulate a drone in a 3D space
     with a target. The drone's task is to reach the target.
+
+    :param kwargs: Keyword arguments for the _BaseRegime environment
+    :type kwargs: dict
     """
     
     # region Initialization
@@ -310,16 +337,39 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     def place_target(self,
                      target_pos: np.ndarray,
                      target_orientation: np.ndarray) -> None:
+        """
+        Place the target at a specific position and orientation.
+
+        :param target_pos: The position to place the target
+        :type target_pos: np.ndarray
+        :param target_orientation: The orientation to set for the target
+        :type target_orientation: np.ndarray
+        """
         self.data.body('target').qpos[:3] = target_pos
         self.data.body('target').qpos[3:] = target_orientation
     
     def move_target(self, target_pos: np.ndarray) -> None:
+        """
+        Move the target to a specific position.
+
+        :param target_pos: The position to move the target to
+        :type target_pos: np.ndarray
+        """
         self.data.body('target').xpos = target_pos
     
     def pre_simulation(self) -> None:
+        """
+        Perform any necessary operations before the simulation.
+        """
         pass
     
     def reset_model(self) -> ObsType:
+        """
+        Reset the model of the environment.
+
+        :return: The initial observation of the environment
+        :rtype: ObsType
+        """
         self.drone.reset()
         self.target.reset()
         return self.observation
@@ -330,6 +380,14 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     def step(
             self, action: ActType
     ) -> Tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+        """
+        Perform a step in the environment using the given action.
+
+        :param action: The action to perform
+        :type action: ActType
+        :return: A tuple containing the new observation, reward, whether the episode was truncated, whether the episode is done, and additional metrics
+        :rtype: Tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]
+        """
         self.pre_simulation()
         self.do_simulation(action, self.frame_skip)
         return (self.observation, self.reward,

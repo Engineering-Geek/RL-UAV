@@ -1,15 +1,27 @@
 from numpy.linalg import norm
 
-from SuicideRegime import SuicideRegime
+from TrainingRegimes.SuicideRegime import SuicideRegime
 
 
 class HoverRegime(SuicideRegime):
     """
-    This class represents the environment for a hover drone. It inherits from the _BaseDroneEnv class.
+    The HoverRegime class represents the environment for a hover drone. It inherits from the SuicideRegime class.
     The drone's goal is to hover in place. The simulation ends when the drone hits the ground,
     the time exceeds the maximum time, or the drone reaches the goal.
     The drone receives rewards based on its distance to the target, its velocity, and whether it has reached the goal.
     It receives penalties for time and crashing into the floor.
+
+    :param float tolerance_distance: The maximum distance from the target to end the simulation
+    :param float max_time: The longest the simulation can go on for (seconds)
+    :param float reward_distance_coefficient: Coefficient for the reward based on the distance to the target.
+    :param float reward_distance_exp: Exponent for the reward based on the distance to the target.
+    :param float reward_distance_max: Maximum reward based on the distance to the target.
+    :param float reward_goal: Reward for reaching the goal.
+    :param float reward_velocity_coefficient: Coefficient for the reward based on the drone's velocity.
+    :param float reward_velocity_exp: Exponent for the reward based on the drone's velocity.
+    :param float penalty_time: Penalty for time.
+    :param float penalty_crash: Penalty for crashing.
+    :param kwargs: Additional arguments for the base class.
     """
     
     def __init__(self, tolerance_distance: float, max_time: float,
@@ -39,6 +51,9 @@ class HoverRegime(SuicideRegime):
         """
         Calculate the reward based on the drone's velocity.
         The reward increases as the drone's velocity decreases, unlike the SuicideRegime.
+
+        :return: The reward based on the drone's velocity.
+        :rtype: float
         """
         return (self._reward_velocity_coefficient * (norm(self.drone.velocity))
                 ** -self._reward_velocity_exp)

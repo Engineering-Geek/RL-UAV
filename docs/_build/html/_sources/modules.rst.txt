@@ -1,0 +1,9 @@
+RL-UAV
+======
+
+.. toctree::
+   :maxdepth: 4
+
+   TrainingRegimes
+   training_script
+   utils
