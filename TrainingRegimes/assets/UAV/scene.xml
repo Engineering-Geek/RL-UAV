@@ -1,5 +1,6 @@
 <mujoco model="UAV scene">
   <include file="UAV.xml"/>
+  <include file="target.xml"/>
 
   <statistic center="0 0 0.1" extent="0.6" meansize=".05"/>
 

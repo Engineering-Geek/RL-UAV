@@ -4,7 +4,7 @@
   <compiler inertiafromgeom="true" assetdir="assets"/>
 
   <!-- Simulation options including timestep, gravity, solver iterations, integration method, air density, and air viscosity -->
-  <option timestep="0.01" gravity="0 0 -9.81" iterations="50" integrator="Euler" density="1.225" viscosity="1.8e-5"/>
+  <option gravity="0 0 -9.81" iterations="50" integrator="Euler" density="1.225" viscosity="1.8e-5"/>
 
   <!-- Asset definitions for models components -->
   <asset>
@@ -62,7 +62,7 @@
         <!-- Site for applying thrust force -->
         <site name="prop4_thrust" pos="0 0 -0.025"/>
       </body>
-      <site name="imu" pos="0 0 0.1" type="sphere" size="0.01"/>
+      <site name="drone_imu" pos="0 0 0.1" type="sphere" size="0.01"/>
 
       <!-- Light Camera 1 -->
       <camera name="camera_1" pos="0.0025 0.055 0.003" zaxis="0 -1 0" resolution="64 64"/>
@@ -75,10 +75,6 @@
 
       <!-- Infrared Camera 2 -->
       <camera name="camera_4" pos="-0.0015 0.055 0.005" zaxis="0 -1 0" resolution="64 64"/>
-    </body>
-    <body name="target" pos="1 1 1">
-      <freejoint/>
-      <geom name="target" type="box" size="0.1 0.1 0.1" rgba="0 1 0 1"/>
     </body>
   </worldbody>
 
@@ -95,13 +91,14 @@
   <!-- Sensor definitions for the IMU -->
   <sensor>
     <!-- Accelerometer with noise to simulate drift -->
-    <accelerometer name="imu_accel" site="imu" noise="0.01"/>
+    <accelerometer name="imu_accel" site="drone_imu" noise="0.01"/>
 
     <!-- Gyroscope with noise to simulate drift -->
-    <gyro name="imu_gyro" site="imu" noise="0.005"/>
+    <gyro name="imu_gyro" site="drone_imu" noise="0.005"/>
 
     <!-- Optional: Orientation sensor -->
     <framequat name="imu_orientation" objtype="body" objname="drone"/>
   </sensor>
+
 
 </mujoco>
