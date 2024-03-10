@@ -6,13 +6,13 @@ from numpy.linalg import norm
 from TrainingRegimes._BaseRegime import _BaseRegime
 
 
-class SuicideDroneRegime(_BaseRegime):
+class SuicideRegime(_BaseRegime):
     """
     This class represents the environment for a suicide drone. It inherits from the _BaseDroneEnv class.
     The drone's goal is to reach a target. The simulation ends when the drone hits the ground,
     the time exceeds the maximum time, or the drone reaches the goal.
     The drone receives rewards based on its distance to the target, its velocity, and whether it has reached the goal.
-    It receives penalties for time and crashing.
+    It receives penalties for time and crashing into the floor.
     """
     
     def __init__(self, tolerance_distance: float, max_time: float,
