@@ -1,6 +1,8 @@
 # RL-UAV
+[![Documentation Status](https://readthedocs.org/projects/rl-uav/badge/?version=latest)](https://rl-uav.readthedocs.io/en/latest/?badge=latest)
 
 RL-UAV is a reinforcement learning project focused on drone simulation. The project is built using Python and JavaScript, and it uses the MuJoCo physics engine for accurate physics simulation.
+
 
 ## Project Structure
 

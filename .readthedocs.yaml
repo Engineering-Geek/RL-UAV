@@ -5,3 +5,16 @@ build:
     python: "3.11"
 sphinx:
   configuration: docs/conf.py
+
+#extensions = [
+#    'sphinx.ext.autodoc',
+#    'sphinx.ext.napoleon',
+#    'sphinx.ext.viewcode',
+#    'sphinx_rtd_theme',
+#    'sphinx.ext.autosummary',
+#]
+
+# html_theme = 'sphinx_rtd_theme'
+python:
+  install:
+    - requirements: docs/requirements.txt
