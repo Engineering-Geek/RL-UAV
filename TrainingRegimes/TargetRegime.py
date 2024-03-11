@@ -5,14 +5,15 @@ from numpy.linalg import norm
 from TrainingRegimes._BaseRegime import _BaseRegime
 
 
-class SuicideRegime(_BaseRegime):
+class TargetRegime(_BaseRegime):
     """
-    This class represents the environment for a suicide drone. It inherits from the _BaseDroneEnv class.
+    This class represents the environment for a drone going to a target. It inherits from the _BaseDroneEnv class.
     The drone's goal is to reach a target. The simulation ends when the drone hits the ground,
     the time exceeds the maximum time, or the drone reaches the goal.
     The drone receives rewards based on its distance to the target, its velocity, and whether it has reached the goal.
     It receives penalties for time and crashing into the floor.
 
+    :param mode: The mode of the environment. Either "hover" or "target".
     :param tolerance_distance: The maximum distance from the target to end the simulation
     :param max_time: The longest the simulation can go on for (seconds)
     :param reward_distance_coefficient: Coefficient for the reward based on the distance to the target.
@@ -25,23 +26,24 @@ class SuicideRegime(_BaseRegime):
     :param penalty_crash: Penalty for crashing.
     :param kwargs: Additional arguments for the base class.
     """
-
+    
     def __init__(self, tolerance_distance: float, max_time: float,
                  reward_distance_coefficient: float, reward_distance_exp: float, reward_distance_max: float,
                  reward_goal: float, reward_velocity_coefficient: float, reward_velocity_exp: float,
-                 penalty_time: float, penalty_crash: float, **kwargs):
+                 reward_velocity_max: float, penalty_time: float, penalty_crash: float, **kwargs):
         super().__init__(**kwargs)
-        self._tolerance_distance = tolerance_distance
-        self._max_time = max_time
-        self._reward_distance_coefficient = reward_distance_coefficient
-        self._reward_distance_exp = reward_distance_exp
-        self._reward_distance_max = reward_distance_max
-        self._reward_goal = reward_goal
-        self._reward_velocity_coefficient = reward_velocity_coefficient
-        self._reward_velocity_exp = reward_velocity_exp
-        self._penalty_time = penalty_time
-        self._penalty_crash = penalty_crash
-
+        self._tolerance_distance = float(tolerance_distance)
+        self._max_time = float(max_time)
+        self._reward_distance_coefficient = float(reward_distance_coefficient)
+        self._reward_distance_exp = float(reward_distance_exp)
+        self._reward_distance_max = float(reward_distance_max)
+        self._reward_goal = float(reward_goal)
+        self._reward_velocity_coefficient = float(reward_velocity_coefficient)
+        self._reward_velocity_exp = float(reward_velocity_exp)
+        self._reward_velocity_max = float(reward_velocity_max)
+        self._penalty_time = float(penalty_time)
+        self._penalty_crash = float(penalty_crash)
+    
     @property
     def reward_distance(self) -> float:
         """
@@ -56,7 +58,7 @@ class SuicideRegime(_BaseRegime):
                        self._reward_distance_max)
         except ZeroDivisionError:
             return self._reward_distance_max
-
+    
     @property
     def reward_time(self) -> float:
         """
@@ -65,7 +67,7 @@ class SuicideRegime(_BaseRegime):
         :return: The time penalty.
         """
         return -self._penalty_time
-
+    
     @property
     def reward_crash(self) -> float:
         """
@@ -73,8 +75,8 @@ class SuicideRegime(_BaseRegime):
 
         :return: The crash penalty if the drone hit the ground, otherwise 0.
         """
-        return -self._penalty_crash if self.drone_hit_ground else 0
-
+        return -self._penalty_crash if self.drone_hit_ground else 0.
+    
     @property
     def reward_goal(self) -> float:
         """
@@ -82,8 +84,8 @@ class SuicideRegime(_BaseRegime):
 
         :return: The reward for reaching the goal if the goal is reached, otherwise 0.
         """
-        return self._reward_goal if self.goal_reached else 0
-
+        return self._reward_goal if self.goal_reached else 0.
+    
     @property
     def reward_velocity(self) -> float:
         """
@@ -93,7 +95,7 @@ class SuicideRegime(_BaseRegime):
         """
         return (self._reward_velocity_coefficient * (norm(self.drone.velocity))
                 ** self._reward_velocity_exp)
-
+    
     @property
     def reward(self) -> float:
         """
@@ -103,7 +105,7 @@ class SuicideRegime(_BaseRegime):
         """
         return (self.reward_distance + self.reward_goal + self.reward_velocity
                 - self._penalty_time - self._penalty_crash)
-
+    
     @property
     def metrics(self) -> dict[str, Any]:
         """
@@ -118,7 +120,7 @@ class SuicideRegime(_BaseRegime):
             "hit_ground": self.drone_hit_ground,
             "time": self.data.time
         }
-
+    
     @property
     def done(self) -> bool:
         """
@@ -126,8 +128,8 @@ class SuicideRegime(_BaseRegime):
 
         :return: True if the drone hit the ground, the simulation is truncated, or the goal is reached, otherwise False.
         """
-        return self.drone_hit_ground or self.truncated or self.goal_reached
-
+        return bool(self.drone_hit_ground or self.truncated or self.goal_reached)
+    
     @property
     def truncated(self) -> bool:
         """
@@ -135,8 +137,8 @@ class SuicideRegime(_BaseRegime):
 
         :return: True if the simulation time exceeds the maximum time, otherwise False.
         """
-        return self.data.time > self._max_time
-
+        return bool(self.data.time > self._max_time)
+    
     @property
     def goal_reached(self) -> bool:
         """
@@ -144,4 +146,4 @@ class SuicideRegime(_BaseRegime):
 
         :return: True if the distance to the target is less than the tolerance distance, otherwise False.
         """
-        return norm(self.drone_target_vector) < self._tolerance_distance
+        return bool(norm(self.drone_target_vector) < self._tolerance_distance)

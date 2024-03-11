@@ -2,18 +2,19 @@
 import os
 from abc import ABC, abstractmethod
 from typing import SupportsFloat, Any, Tuple
+import pytest
 
 import numpy as np
 from gymnasium.core import ActType, ObsType
 from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium.spaces import Space, Box, Dict
 from gymnasium.utils import EzPickle
-from mujoco import MjModel, MjData, mj_step
+from mujoco import MjModel, MjData
 from mujoco._structs import _MjDataBodyViews
-import quaternion
 from numpy.random import default_rng
 
-XML_PATH = os.path.join(os.path.dirname(__file__), "assets/UAV/scene.xml")
+XML_PATH_MAIN = os.path.join(os.path.dirname(__file__), "assets/UAV/scene.xml")
+XML_PATH_REDUCED = os.path.join(os.path.dirname(__file__), "assets/ReducedUAV/scene.xml")
 
 
 # endregion
@@ -32,6 +33,7 @@ class Drone:
     :param rng: The random number generator used for spawning the drone
     :type rng: np.random.Generator, optional
     """
+    
     def __init__(self,
                  data: MjData,
                  spawn_box: np.ndarray,
@@ -68,14 +70,6 @@ class Drone:
         self.body.cvel[:3] = value
     
     @property
-    def angular_velocity(self) -> np.ndarray:
-        return self.body.qvel[3:6]
-    
-    @angular_velocity.setter
-    def angular_velocity(self, value: np.ndarray) -> None:
-        self.body.qvel[3:6] = value
-    
-    @property
     def imu_accel(self) -> np.ndarray:
         return self.data.sensor('imu_accel').data
     
@@ -110,6 +104,7 @@ class Target:
     :param rng: The random number generator used for spawning the target
     :type rng: np.random.Generator, optional
     """
+    
     def __init__(self,
                  data: MjData,
                  spawn_box: np.ndarray,
@@ -162,6 +157,8 @@ class Target:
         """
         self.position = self.spawn_box[0] + (self.spawn_box[1] - self.spawn_box[0]) * self.rng.random(3)
         self.velocity = self.spawn_max_velocity * self.rng.random(3)
+
+
 # endregion
 
 
@@ -211,22 +208,30 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
         }
         height = kwargs.get('height', 480)
         width = kwargs.get('width', 640)
-        observation_space: Space[ObsType] = Dict({
-            "imu_accel":
-                Box(low=-np.inf, high=np.inf, shape=(3,)),
-            "imu_gyro":
-                Box(low=-np.inf, high=np.inf, shape=(4,)),
-            "imu_orientation":
-                Box(low=-np.inf, high=np.inf, shape=(3,)),
-            "image_0":
-                Box(low=0, high=255, shape=(height, width, 3), dtype=np.uint8),
-            "image_1":
-                Box(low=0, high=255, shape=(height, width, 3), dtype=np.uint8),
-        })
+        self.n_camera = kwargs.get('n_camera', 2)
+        observation_space_dict = {
+            "imu_accel": Box(low=-np.inf, high=np.inf, shape=(3,)),
+            "imu_gyro": Box(low=-np.inf, high=np.inf, shape=(4,)),
+            "imu_orientation": Box(low=-np.inf, high=np.inf, shape=(3,)),
+        }
         
+        for i in range(self.n_camera):
+            observation_space_dict[f"image_{i}"] = Box(low=0, high=255, shape=(height, width, 3), dtype=np.uint8)
+        
+        observation_space: Space[ObsType] = Dict(observation_space_dict)
+        
+        # if model_path is a valid file, use it. If it is "Reduced", use the reduced model. Else, use the main model.
+        model_path = kwargs.get('xml_path', 'Reduced')
+        if model_path == "Reduced":
+            model_path = XML_PATH_REDUCED
+        elif model_path == "Main":
+            model_path = XML_PATH_MAIN
+        elif not os.path.isfile(model_path):
+            raise ValueError(f"Model path {model_path} is not a valid file. "
+                             f"Expected a valid file or 'Reduced' or 'Main'.")
         MujocoEnv.__init__(
             self,
-            model_path=XML_PATH if 'model_path' not in kwargs else kwargs['model_path'],
+            model_path=model_path,
             frame_skip=kwargs.get('frame_skip', 1),
             observation_space=observation_space,
             height=height,
@@ -234,7 +239,7 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
         )
         EzPickle.__init__(
             self,
-            XML_PATH,
+            XML_PATH_MAIN,
             kwargs.get('frame_skip', 1),
             kwargs.get('dt', self.dt),
             **kwargs,
@@ -288,33 +293,6 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     # endregion
     
     # region Properties
-    @property
-    def drone_accel(self) -> np.ndarray:
-        return self.data.sensor('imu_accel').data
-    
-    @property
-    def drone_gyro(self) -> np.ndarray:
-        return self.data.sensor('imu_gyro').data
-    
-    @property
-    def drone_orientation(self) -> np.ndarray:
-        return self.data.sensor('imu_orientation').data
-    
-    @property
-    def camera_0(self) -> np.ndarray:
-        return self.mujoco_renderer.render('rgb_array', 0)
-    
-    @property
-    def camera_1(self) -> np.ndarray:
-        return self.mujoco_renderer.render('rgb_array', 1)
-    
-    @property
-    def target_position(self) -> np.ndarray:
-        return self.data.body('target').xpos
-    
-    @property
-    def target_velocity(self) -> np.ndarray:
-        return self.data.body('target').cvel[:3]
     
     @property
     def drone_target_vector(self) -> np.ndarray:
@@ -334,29 +312,6 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     # endregion
     
     # region Methods
-    def place_target(self,
-                     target_pos: np.ndarray,
-                     target_orientation: np.ndarray) -> None:
-        """
-        Place the target at a specific position and orientation.
-
-        :param target_pos: The position to place the target
-        :type target_pos: np.ndarray
-        :param target_orientation: The orientation to set for the target
-        :type target_orientation: np.ndarray
-        """
-        self.data.body('target').qpos[:3] = target_pos
-        self.data.body('target').qpos[3:] = target_orientation
-    
-    def move_target(self, target_pos: np.ndarray) -> None:
-        """
-        Move the target to a specific position.
-
-        :param target_pos: The position to move the target to
-        :type target_pos: np.ndarray
-        """
-        self.data.body('target').xpos = target_pos
-    
     def pre_simulation(self) -> None:
         """
         Perform any necessary operations before the simulation.
@@ -383,10 +338,9 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
         """
         Perform a step in the environment using the given action.
 
-        :param action: The action to perform
-        :type action: ActType
-        :return: A tuple containing the new observation, reward, whether the episode was truncated, whether the episode is done, and additional metrics
-        :rtype: Tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]
+        :param action: The action to perform :type action: ActType :return: A tuple containing the new observation,
+        reward, whether the episode was truncated, whether the episode is done, and additional metrics :rtype: Tuple[
+        ObsType, SupportsFloat, bool, bool, dict[str, Any]]
         """
         self.pre_simulation()
         self.do_simulation(action, self.frame_skip)
@@ -395,14 +349,14 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     
     @property
     def observation(self) -> ObsType:
-        return {
-            "drone_position": self.data.qpos[0:3],
-            "drone_velocity": self.data.qvel[0:3],
-            "drone_orientation": self.data.qpos[3:7],
-            "drone_angular_velocity": self.data.qvel[3:6],
-            "image_0": self.mujoco_renderer.render('rgb_array', 0),
-            "image_1": self.mujoco_renderer.render('rgb_array', 1),
+        observation = {
+            "acceleration": self.drone.imu_accel,
+            "gyro": self.drone.imu_gyro,
+            "orientation": self.drone.imu_orientation
         }
+        for i in range(self.n_camera):
+            observation[f"image_{i}"] = self.mujoco_renderer.render('rgb_array', i)
+        return observation
     
     @property
     @abstractmethod
@@ -426,4 +380,32 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     
     # endregion
 
+
 # endregion
+
+class _TestRegime(_BaseRegime):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+    
+    def pre_simulation(self) -> None:
+        self.data.ctrl[:] = 0
+    
+    @property
+    def reward(self) -> SupportsFloat:
+        return 0
+    
+    @property
+    def done(self) -> bool:
+        return False
+    
+    @property
+    def truncated(self) -> bool:
+        return False
+    
+    @property
+    def metrics(self) -> dict[str, Any]:
+        return {}
+
+
+
+
