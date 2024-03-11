@@ -4,6 +4,14 @@ TrainingRegimes package
 Submodules
 ----------
 
+TrainingRegimes.BaseRegime module
+---------------------------------
+
+.. automodule:: TrainingRegimes.BaseRegime
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 TrainingRegimes.TargetRegime module
 -----------------------------------
 

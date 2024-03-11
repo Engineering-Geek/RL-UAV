@@ -1,0 +1,21 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[project]
+name = "rl-uav"
+version = "0.1.0"
+description = "A reinforcement learning project focused on drone simulation."
+authors = ["Nikhil Melgiri <melgirinik@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+test = ["pytest"]
+
+[project.scripts]
+# Add your scripts here
+
+[project.urls]
+# Add your project URLs here
