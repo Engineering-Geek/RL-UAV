@@ -22,18 +22,14 @@ XML_PATH_REDUCED = os.path.join(os.path.dirname(__file__), "assets/ReducedUAV/sc
 # region Drone and Target Classes
 class Drone:
     """
-    The Drone class represents a drone in the simulation.
+    Represents a drone in the simulation environment. It manages the drone's state, including its position,
+    velocity, and IMU sensor readings.
 
-    :param data: The MjData instance from the simulation
-    :type data: MjData
-    :param spawn_box: The box in which the drone can spawn
-    :type spawn_box: np.ndarray
-    :param spawn_max_velocity: The maximum velocity at which the drone can spawn
-    :type spawn_max_velocity: float
-    :param rng: The random number generator used for spawning the drone
-    :type rng: np.random.Generator, optional
+    :param data: The MjData instance containing the simulation state.
+    :param spawn_box: A numpy array defining the boundaries for the drone's initial position.
+    :param spawn_max_velocity: The maximum initial velocity of the drone.
+    :param rng: An instance of a random number generator (optional).
     """
-    
     def __init__(self,
                  data: MjData,
                  spawn_box: np.ndarray,
@@ -41,10 +37,12 @@ class Drone:
                  rng: np.random.Generator = default_rng()
                  ):
         """
-        Initialize the Drone object
-        :param data:
-        :param spawn_box:
-        :param spawn_max_velocity:
+        Initializes the Drone instance with the provided parameters.
+
+        :param data: The MjData instance from the simulation environment.
+        :param spawn_box: A 2x3 numpy array defining the min and max coordinates for spawning the drone.
+        :param spawn_max_velocity: The maximum magnitude of the drone's initial velocity vector.
+        :param rng: A numpy random number generator instance for stochasticity in initial conditions.
         """
         self.data = data
         self.body: _MjDataBodyViews = data.body('drone')
@@ -55,35 +53,70 @@ class Drone:
     
     @property
     def position(self) -> np.ndarray:
+        """
+        Gets the drone's position.
+
+        :return: A numpy array representing the drone's current position.
+        """
         return self.body.xpos
     
     @position.setter
     def position(self, value: np.ndarray) -> None:
+        """
+        Sets the drone's position.
+
+        :param value: A numpy array representing the new position for the drone.
+        """
         self.body.xpos = value
     
     @property
     def velocity(self) -> np.ndarray:
+        """
+        Gets the drone's velocity.
+
+        :return: A numpy array representing the drone's current velocity.
+        """
         return self.body.cvel[:3]
     
     @velocity.setter
     def velocity(self, value: np.ndarray) -> None:
+        """
+        Sets the drone's velocity.
+
+        :param value: A numpy array representing the new velocity for the drone.
+        """
         self.body.cvel[:3] = value
     
     @property
     def imu_accel(self) -> np.ndarray:
+        """
+        Gets the drone's accelerometer readings from the IMU.
+
+        :return: A numpy array representing the drone's current accelerometer readings.
+        """
         return self.data.sensor('imu_accel').data
     
     @property
     def imu_gyro(self) -> np.ndarray:
+        """
+        Gets the drone's gyroscope readings from the IMU.
+
+        :return: A numpy array representing the drone's current gyroscope readings.
+        """
         return self.data.sensor('imu_gyro').data
     
     @property
     def imu_orientation(self) -> np.ndarray:
+        """
+        Gets the drone's orientation readings from the IMU.
+
+        :return: A numpy array representing the drone's current orientation.
+        """
         return self.data.sensor('imu_orientation').data
     
     def reset(self):
         """
-        Reset the drone's position, orientation, velocity, and angular velocity.
+        Resets the drone's position and velocity to initial values within the defined spawn box and velocity limits.
         """
         self.position = self.spawn_box[0] + (self.spawn_box[1] - self.spawn_box[0]) * self.rng.random(3)
         self.velocity = self.spawn_max_velocity * self.rng.random(3)
@@ -91,20 +124,15 @@ class Drone:
 
 class Target:
     """
-    The Target class represents a target in the simulation.
+    Represents a target in the simulation environment. It manages the target's state, including its position,
+    velocity, and orientation.
 
-    :param data: The MjData instance from the simulation
-    :type data: MjData
-    :param spawn_box: The box in which the target can spawn
-    :type spawn_box: np.ndarray
-    :param spawn_max_velocity: The maximum velocity at which the target can spawn
-    :type spawn_max_velocity: float
-    :param spawn_max_angular_velocity: The maximum angular velocity at which the target can spawn
-    :type spawn_max_angular_velocity: float
-    :param rng: The random number generator used for spawning the target
-    :type rng: np.random.Generator, optional
+    :param data: The MjData instance containing the simulation state.
+    :param spawn_box: A numpy array defining the boundaries for the target's initial position.
+    :param spawn_max_velocity: The maximum initial velocity of the target.
+    :param spawn_max_angular_velocity: The maximum initial angular velocity of the target.
+    :param rng: An instance of a random number generator (optional).
     """
-    
     def __init__(self,
                  data: MjData,
                  spawn_box: np.ndarray,
@@ -113,11 +141,13 @@ class Target:
                  rng: np.random.Generator = default_rng()
                  ):
         """
-        Initialize the Target object
-        :param data:
-        :param spawn_box:
-        :param spawn_max_velocity:
-        :param spawn_max_angular_velocity:
+        Initializes the Target instance with the provided parameters.
+
+        :param data: The MjData instance from the simulation environment.
+        :param spawn_box: A 2x3 numpy array defining the min and max coordinates for spawning the target.
+        :param spawn_max_velocity: The maximum magnitude of the target's initial velocity vector.
+        :param spawn_max_angular_velocity: The maximum magnitude of the target's initial angular velocity vector.
+        :param rng: A numpy random number generator instance for stochasticity in initial conditions.
         """
         self.data = data
         self.body: _MjDataBodyViews = data.body('target')
@@ -129,31 +159,61 @@ class Target:
     
     @property
     def position(self) -> np.ndarray:
+        """
+        Gets the target's position.
+
+        :return: A numpy array representing the target's current position.
+        """
         return self.body.xpos
     
     @position.setter
     def position(self, value: np.ndarray) -> None:
+        """
+        Sets the target's position.
+
+        :param value: A numpy array representing the new position for the target.
+        """
         self.body.xpos = value
     
     @property
     def velocity(self) -> np.ndarray:
+        """
+        Gets the target's velocity.
+
+        :return: A numpy array representing the target's current velocity.
+        """
         return self.body.cvel[:3]
     
     @velocity.setter
     def velocity(self, value: np.ndarray) -> None:
+        """
+        Sets the target's velocity.
+
+        :param value: A numpy array representing the new velocity for the target.
+        """
         self.body.cvel[:3] = value
     
     @property
     def orientation(self) -> np.ndarray:
+        """
+        Gets the target's orientation.
+
+        :return: A numpy array representing the target's current orientation.
+        """
         return self.body.qpos[3:7]
     
     @orientation.setter
     def orientation(self, value: np.ndarray) -> None:
+        """
+        Sets the target's orientation.
+
+        :param value: A numpy array representing the new orientation for the target.
+        """
         self.body.qpos[3:7] = value
     
     def reset(self):
         """
-        Reset the target's position, orientation, velocity, and angular velocity.
+        Resets the target's position, velocity, and orientation to initial values within the defined spawn box and velocity limits.
         """
         self.position = self.spawn_box[0] + (self.spawn_box[1] - self.spawn_box[0]) * self.rng.random(3)
         self.velocity = self.spawn_max_velocity * self.rng.random(3)
@@ -163,38 +223,42 @@ class Target:
 
 
 # region BaseMujocoEnv
-class _BaseRegime(MujocoEnv, EzPickle, ABC):
+class BaseRegime(MujocoEnv, EzPickle, ABC):
     """
-    _BaseRegime is a custom environment that extends the
-    MujocoEnv. It is designed to simulate a drone in a 3D space
-    with a target. The drone's task is to reach the target.
+    Base class for creating training regimes in a Mujoco simulation environment. It sets up the environment,
+    including the drone and target, and defines the necessary properties and methods that should be implemented
+    by subclasses.
 
-    :param kwargs: Keyword arguments for the _BaseRegime environment
-    :type kwargs: dict
+    This class should not be instantiated directly but extended by subclasses to define specific training regimes.
+
+    :param kwargs: Keyword arguments for environment configuration.
     """
-    
     # region Initialization
     def __init__(self, **kwargs):
         """
-        Initialize the _BaseRegime environment.
-        :key xml_path: Path to the XML file that describes the
-        :key sim_rate: Simulation rate
-        :key dt: Simulation timestep
-        :key height: Height of the camera
-        :key width: Width of the camera
-        :key drone_spawn_box: Box in which the drone can spawn. First
-            numpy array is the lower bound and the second numpy array is
-            the upper bound.
-        :key drone_spawn_angle_range: Range of angles in which the drone
-            can spawn. First numpy array is the lower bound and the second
-            numpy array is the upper bound.
-        :key drone_spawn_max_velocity: Maximum velocity at which the drone
-            can spawn.
-        :key drone_spawn_max_angular_velocity: Maximum angular velocity at
-            which the drone can spawn.
-        :key target_spawn_box: Box in which the target can spawn. First
-            numpy array is the lower bound and the second numpy array is
-            the upper bound.
+        Initialize the BaseRegime environment with configuration parameters.
+
+        :keyword xml_path: Path to the XML model file. It can be a string indicating a predefined model ("Main" or "Reduced")
+            or a path to a custom model file. (default: "Reduced")
+            Type: str
+        :keyword height: The height of the rendered images from the simulation, used in defining the observation space.
+            Type: int, default: 480
+        :keyword width: The width of the rendered images from the simulation, used in defining the observation space.
+            Type: int, default: 640
+        :keyword n_camera: Number of cameras/views to be included in the observation space. Each camera adds an image to
+            the observation space. Type: int, default: 2
+        :keyword frame_skip: Number of frames to skip for each simulation step. A higher frame_skip results in faster
+            simulation at the cost of less control precision. Type: int, default: 1
+        :keyword dt: The time step for the simulation. It determines the update frequency of the simulation.
+            Type: float, default: value from the loaded Mujoco model or 0.01 if not specified
+        :keyword drone_spawn_box: A 2x3 array specifying the lower and upper bounds ([min, max]) for the drone's initial
+            position. Each row is a 3D coordinate. Type: numpy.ndarray, shape: (2, 3)
+        :keyword drone_spawn_max_velocity: Maximum magnitude of the drone's initial velocity. Type: float
+        :keyword target_spawn_box: A 2x3 array specifying the lower and upper bounds ([min, max]) for the target's initial
+            position. Each row is a 3D coordinate. Type: numpy.ndarray, shape: (2, 3)
+        :keyword target_spawn_max_velocity: Maximum magnitude of the target's initial velocity. Type: float
+        :keyword target_spawn_max_angular_velocity: Maximum magnitude of the target's initial angular velocity.
+            Type: float
         """
         # region Initialize MujocoEnv
         self.metadata = {
@@ -296,10 +360,20 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     
     @property
     def drone_target_vector(self) -> np.ndarray:
+        """
+        Compute and return the vector from the drone to the target.
+
+        :return: A numpy array representing the vector from the drone to the target.
+        """
         return self.target.position - self.drone.position
     
     @property
     def drone_hit_ground(self) -> bool:
+        """
+        Check if the drone has hit the ground.
+
+        :return: True if the drone has made contact with the ground, False otherwise.
+        """
         drone_id = self.model.geom('drone').id
         floor_id = self.model.geom('floor').id
         for i in range(self.data.ncon):
@@ -314,16 +388,15 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     # region Methods
     def pre_simulation(self) -> None:
         """
-        Perform any necessary operations before the simulation.
+        Perform any necessary actions before each simulation step. This method should be overridden by subclasses.
         """
         pass
     
     def reset_model(self) -> ObsType:
         """
-        Reset the model of the environment.
+        Reset the environment to an initial state and return the initial observation.
 
-        :return: The initial observation of the environment
-        :rtype: ObsType
+        :return: The initial observation after resetting the environment.
         """
         self.drone.reset()
         self.target.reset()
@@ -336,11 +409,10 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
             self, action: ActType
     ) -> Tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         """
-        Perform a step in the environment using the given action.
+        Execute one time step within the environment.
 
-        :param action: The action to perform :type action: ActType :return: A tuple containing the new observation,
-        reward, whether the episode was truncated, whether the episode is done, and additional metrics :rtype: Tuple[
-        ObsType, SupportsFloat, bool, bool, dict[str, Any]]
+        :param action: The action to be executed.
+        :return: A tuple containing the new observation, reward, done flag, truncated flag, and info dictionary.
         """
         self.pre_simulation()
         self.do_simulation(action, self.frame_skip)
@@ -349,6 +421,11 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     
     @property
     def observation(self) -> ObsType:
+        """
+        Get the current observation of the environment.
+
+        :return: The current environment observation.
+        """
         observation = {
             "acceleration": self.drone.imu_accel,
             "gyro": self.drone.imu_gyro,
@@ -361,21 +438,41 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
     @property
     @abstractmethod
     def reward(self) -> SupportsFloat:
+        """
+        Calculate and return the current reward. This method should be implemented by subclasses.
+
+        :return: The current reward.
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def done(self) -> bool:
+        """
+        Determine whether the episode is done. This method should be implemented by subclasses.
+
+        :return: True if the episode is finished, False otherwise.
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def truncated(self) -> bool:
+        """
+        Determine whether the episode is truncated. This method should be implemented by subclasses.
+
+        :return: True if the episode is truncated, False otherwise.
+        """
         raise NotImplementedError
     
     @property
     @abstractmethod
     def metrics(self) -> dict[str, Any]:
+        """
+        Return additional data or metrics for logging purposes. This method should be implemented by subclasses.
+
+        :return: A dictionary containing metrics or additional information.
+        """
         raise NotImplementedError
     
     # endregion
@@ -383,27 +480,60 @@ class _BaseRegime(MujocoEnv, EzPickle, ABC):
 
 # endregion
 
-class _TestRegime(_BaseRegime):
+class _TestRegime(BaseRegime):
+    """
+    A test regime class for demonstration purposes, extending the BaseRegime class.
+
+    This class implements the abstract methods of BaseRegime with basic or dummy functionality.
+    """
     def __init__(self, **kwargs):
+        """
+        Initialize the _TestRegime environment.
+
+        :param kwargs: Configuration parameters for the environment.
+        """
         super().__init__(**kwargs)
     
     def pre_simulation(self) -> None:
+        """
+        Perform any necessary actions before each simulation step. Overridden to set control to zero.
+        """
         self.data.ctrl[:] = 0
     
     @property
     def reward(self) -> SupportsFloat:
+        """
+        Calculate and return the current reward. Overridden to return a fixed reward of 0.
+
+        :return: The current reward, which is 0 in this test regime.
+        """
         return 0
     
     @property
     def done(self) -> bool:
+        """
+        Determine whether the episode is done. Overridden to always return False.
+
+        :return: False, indicating the episode is never considered done in this test regime.
+        """
         return False
     
     @property
     def truncated(self) -> bool:
+        """
+        Determine whether the episode is truncated. Overridden to always return False.
+
+        :return: False, indicating the episode is never considered truncated in this test regime.
+        """
         return False
     
     @property
     def metrics(self) -> dict[str, Any]:
+        """
+        Return additional data or metrics for logging purposes. Overridden to return an empty dictionary.
+
+        :return: An empty dictionary, as no additional metrics are provided in this test regime.
+        """
         return {}
 
 
