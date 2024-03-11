@@ -3,8 +3,14 @@ build:
   os: ubuntu-lts-latest
   tools:
     python: "3.11"
+  jobs:
+    post_checkout:
+      - git fetch --unshallow || true
+
 sphinx:
-  configuration: docs/source/conf.py
+  configuration: docs/conf.py
+
+formats: all
 
 python:
   install:
