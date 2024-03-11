@@ -2,7 +2,6 @@
 import os
 from abc import ABC, abstractmethod
 from typing import SupportsFloat, Any, Tuple
-import pytest
 
 import numpy as np
 from gymnasium.core import ActType, ObsType

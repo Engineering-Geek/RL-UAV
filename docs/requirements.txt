@@ -1,2 +1,5 @@
 sphinx==7.2.6
 sphinx-rtd-theme
+pytest
+numpy
+mujoco
