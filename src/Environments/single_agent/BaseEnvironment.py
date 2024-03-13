@@ -12,8 +12,8 @@ from mujoco import MjModel, MjData
 from mujoco._structs import _MjDataBodyViews
 from numpy.random import default_rng
 
-XML_PATH_MAIN = os.path.join(os.path.dirname(__file__), "assets/UAV/scene.xml")
-XML_PATH_REDUCED = os.path.join(os.path.dirname(__file__), "assets/ReducedUAV/scene.xml")
+XML_PATH_MAIN = os.path.join(os.path.dirname(__file__), "../assets/UAV/scene.xml")
+XML_PATH_REDUCED = os.path.join(os.path.dirname(__file__), "../assets/ReducedUAV/scene.xml")
 
 
 # endregion

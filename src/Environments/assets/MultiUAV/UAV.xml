@@ -37,8 +37,13 @@
         <site name="drone{{index}}_prop4_thrust" pos="0 0 -0.025"/>
       </body>
       <site name="drone{{index}}_imu" pos="0 0 0.1" type="sphere" size="0.01"/>
+      <site name="drone{{index}}_gun_barrel_end" pos="0 -0.015 0.005" size="0.005" rgba="0.5 0.5 0.5 1"/>
       <camera name="drone{{index}}_camera_1" pos="0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1"/>
       <camera name="drone{{index}}_camera_2" pos="-0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1"/>
+    </body>
+    <body name="drone{{index}}_bullet" pos="0 -2 0">
+      <joint name="drone{{index}}_bullet_joint" type="free"/>
+      <geom name="drone{{index}}_bullet_geom" type="cylinder" size="0.005 0.005" mass="0.1"/>
     </body>
   </worldbody>
   <actuator>

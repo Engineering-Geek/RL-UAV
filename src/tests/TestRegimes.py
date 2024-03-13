@@ -1,6 +1,6 @@
 # Test _BaseRegime and TargetRegime, there may be more Regimes but all inherit from _BaseRegime
 import pytest
-from src.TrainingRegimes import TargetRegime
+from Environments.single_agent import TargetRegime
 
 
 # region Declaring the fixtures

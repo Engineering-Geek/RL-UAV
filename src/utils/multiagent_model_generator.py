@@ -61,9 +61,9 @@ from typing import Tuple, List
 from mujoco import MjModel, viewer
 
 # Define directories for saving and reading XML files
-SAVE_DIR = os.path.join(os.path.dirname(__file__), '../TrainingRegimes/assets/MultiUAV/tmp')
-SCENE_DIR = os.path.join(os.path.dirname(__file__), '../TrainingRegimes/assets/MultiUAV/scene.xml')
-UAV_DIR = os.path.join(os.path.dirname(__file__), '../TrainingRegimes/assets/MultiUAV/UAV.xml')
+SAVE_DIR = os.path.join(os.path.dirname(__file__), '../Environments/assets/MultiUAV/tmp')
+SCENE_DIR = os.path.join(os.path.dirname(__file__), '../Environments/assets/MultiUAV/scene.xml')
+UAV_DIR = os.path.join(os.path.dirname(__file__), '../Environments/assets/MultiUAV/UAV.xml')
 
 # Create the save directory if it does not exist
 if not os.path.exists(SAVE_DIR):
