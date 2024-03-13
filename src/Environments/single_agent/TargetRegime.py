@@ -2,7 +2,7 @@ from typing import Any
 
 from numpy.linalg import norm
 
-from Environments.single_agent.BaseEnvironment import BaseRegime
+from src.Environments.single_agent.BaseEnvironment import BaseRegime
 
 
 class TargetRegime(BaseRegime):
