@@ -65,16 +65,10 @@
       <site name="drone_imu" pos="0 0 0.1" type="sphere" size="0.01"/>
 
       <!-- Light Camera 1 -->
-      <camera name="camera_1" pos="0.0025 0.055 0.003" zaxis="0 -1 0" resolution="64 64"/>
+      <camera name="camera_1" pos="0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1" resolution="64 64"/>
 
       <!-- Light Camera 2 -->
-      <camera name="camera_2" pos="-0.0025 0.055 0.003" zaxis="0 -1 0" resolution="64 64"/>
-
-      <!-- Infrared Camera 1 -->
-      <camera name="camera_3" pos="0.0015 0.055 0.005" zaxis="0 -1 0" resolution="64 64"/>
-
-      <!-- Infrared Camera 2 -->
-      <camera name="camera_4" pos="-0.0015 0.055 0.005" zaxis="0 -1 0" resolution="64 64"/>
+      <camera name="camera_2" pos="-0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1" resolution="64 64"/>
     </body>
   </worldbody>
 

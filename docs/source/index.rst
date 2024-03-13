@@ -11,6 +11,8 @@ Welcome to RL-UAV's documentation!
    :caption: Contents:
 
    modules
+   UAV
+   MultibodyUAV
 
 Indices and tables
 ==================

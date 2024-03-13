@@ -258,6 +258,7 @@ class BaseRegime(MujocoEnv, EzPickle, ABC):
         :keyword target_spawn_max_velocity: Maximum magnitude of the target's initial velocity. Type: float
         :keyword target_spawn_max_angular_velocity: Maximum magnitude of the target's initial angular velocity.
             Type: float
+        :keyword depth_camera: Whether to include a depth camera in the observation space. Type: bool, default: False
         """
         # region Initialize MujocoEnv
         self.metadata = {
@@ -272,6 +273,7 @@ class BaseRegime(MujocoEnv, EzPickle, ABC):
         height = kwargs.get('height', 480)
         width = kwargs.get('width', 640)
         self.n_camera = kwargs.get('n_camera', 2)
+        self.depth_camera = kwargs.get('depth_camera', False)
         observation_space_dict = {
             "imu_accel": Box(low=-np.inf, high=np.inf, shape=(3,)),
             "imu_gyro": Box(low=-np.inf, high=np.inf, shape=(4,)),
@@ -279,7 +281,8 @@ class BaseRegime(MujocoEnv, EzPickle, ABC):
         }
         
         for i in range(self.n_camera):
-            observation_space_dict[f"image_{i}"] = Box(low=0, high=255, shape=(height, width, 3), dtype=np.uint8)
+            observation_space_dict[f"image_{i}"] = (
+                Box(low=0, high=255, shape=(height, width, 3 if not self.depth_camera else 1)))
         
         observation_space: Space[ObsType] = Dict(observation_space_dict)
         

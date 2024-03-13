@@ -1,0 +1,55 @@
+
+<mujoco model="UAVs">
+  <compiler inertiafromgeom="true" assetdir="assets"/>
+  <option gravity="0 0 -9.81" iterations="50" integrator="Euler" density="1.225" viscosity="1.8e-5"/>
+  <asset>
+    <mesh name="drone{{index}}" file="drone.stl"/>
+    <mesh name="cw_prop_mesh{{index}}" file="cw_prop.stl"/>
+    <mesh name="ccw_prop_mesh{{index}}" file="ccw_prop.stl"/>
+  </asset>
+  <default>
+    <joint damping="0.01"/>
+    <geom friction="1 0.5 0.5" density="1000" margin="0.01"/>
+    <motor ctrlrange="0.0 10.0" ctrllimited="true"/>
+  </default>
+  <worldbody>
+    <body name="drone{{index}}" pos="{{x_pos}} {{y_pos}} 0">
+      <freejoint/>
+      <geom name="drone{{index}}_geom" type="mesh" mesh="drone{{index}}" mass="10"/>
+      <body name="drone{{index}}_prop1" pos="0.176777 0.176777 0.125">
+        <joint name="drone{{index}}_prop1_joint" type="hinge" axis="0 0 1" limited="false"/>
+        <geom type="mesh" mesh="cw_prop_mesh{{index}}" mass="0.025"/>
+        <site name="drone{{index}}_prop1_thrust" pos="0 0 -0.025"/>
+      </body>
+      <body name="drone{{index}}_prop2" pos="-0.176777 -0.176777 0.125">
+        <joint name="drone{{index}}_prop2_joint" type="hinge" axis="0 0 1" limited="false"/>
+        <geom type="mesh" mesh="cw_prop_mesh{{index}}" mass="0.025"/>
+        <site name="drone{{index}}_prop2_thrust" pos="0 0 -0.025"/>
+      </body>
+      <body name="drone{{index}}_prop3" pos="0.176777 -0.176777 0.125">
+        <joint name="drone{{index}}_prop3_joint" type="hinge" axis="0 0 1" limited="false"/>
+        <geom type="mesh" mesh="ccw_prop_mesh{{index}}" mass="0.025"/>
+        <site name="drone{{index}}_prop3_thrust" pos="0 0 -0.025"/>
+      </body>
+      <body name="drone{{index}}_prop4" pos="-0.176777 0.176777 0.125">
+        <joint name="drone{{index}}_prop4_joint" type="hinge" axis="0 0 1" limited="false"/>
+        <geom type="mesh" mesh="ccw_prop_mesh{{index}}" mass="0.025"/>
+        <site name="drone{{index}}_prop4_thrust" pos="0 0 -0.025"/>
+      </body>
+      <site name="drone{{index}}_imu" pos="0 0 0.1" type="sphere" size="0.01"/>
+      <camera name="drone{{index}}_camera_1" pos="0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1"/>
+      <camera name="drone{{index}}_camera_2" pos="-0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1"/>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor name="drone{{index}}_motor1" site="drone{{index}}_prop1_thrust" gear="0 0 10 0 0 -1"/>
+    <motor name="drone{{index}}_motor2" site="drone{{index}}_prop2_thrust" gear="0 0 10 0 0 -1"/>
+    <motor name="drone{{index}}_motor3" site="drone{{index}}_prop3_thrust" gear="0 0 10 0 0 1"/>
+    <motor name="drone{{index}}_motor4" site="drone{{index}}_prop4_thrust" gear="0 0 10 0 0 1"/>
+  </actuator>
+  <sensor>
+    <accelerometer name="drone{{index}}_imu_accel" site="drone{{index}}_imu" noise="0.01"/>
+    <gyro name="drone{{index}}_imu_gyro" site="drone{{index}}_imu" noise="0.005"/>
+    <framequat name="drone{{index}}_imu_orientation" objtype="body" objname="drone{{index}}"/>
+  </sensor>
+</mujoco>
