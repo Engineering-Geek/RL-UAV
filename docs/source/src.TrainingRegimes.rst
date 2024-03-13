@@ -20,6 +20,22 @@ src.TrainingRegimes.BaseRegime module
    :undoc-members:
    :show-inheritance:
 
+src.TrainingRegimes.MultiAgentMuJoCoEnvironment module
+------------------------------------------------------
+
+.. automodule:: src.TrainingRegimes.MultiAgentMuJoCoEnvironment
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+src.TrainingRegimes.ShootingRegime module
+-----------------------------------------
+
+.. automodule:: src.TrainingRegimes.ShootingRegime
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 src.TrainingRegimes.TargetRegime module
 ---------------------------------------
 

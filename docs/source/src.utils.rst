@@ -12,6 +12,14 @@ src.utils.file\_converters module
    :undoc-members:
    :show-inheritance:
 
+src.utils.multiagent\_model\_generator module
+---------------------------------------------
+
+.. automodule:: src.utils.multiagent_model_generator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 
