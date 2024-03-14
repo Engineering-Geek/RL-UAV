@@ -13,7 +13,7 @@
     <motor ctrlrange="0.0 10.0" ctrllimited="true"/>
   </default>
   <worldbody>
-    <body name="drone{{index}}" pos="{{x_pos}} {{y_pos}} 0">
+    <body name="drone{{index}}" pos="{{x_pos}} {{y_pos}} 1">
       <freejoint/>
       <geom name="drone{{index}}_geom" type="mesh" mesh="drone{{index}}" mass="10"/>
       <body name="drone{{index}}_prop1" pos="0.176777 0.176777 0.125">

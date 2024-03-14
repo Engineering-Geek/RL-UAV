@@ -71,7 +71,7 @@ from gymnasium.core import ActType, ObsType
 from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium.spaces import Dict as SpaceDict
 from gymnasium.utils import EzPickle
-from mujoco import MjData
+from mujoco import MjData, mj_step
 from mujoco._structs import _MjContactList
 from numpy.random import default_rng
 from ray.rllib.env import MultiAgentEnv
@@ -154,6 +154,8 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
             np.array([[-10, -10, 0], [10, 10, 10]])
             for _ in range(n_agents)
         ])
+        # Setup simulation properties, such as timestep and rendering frequency.
+        self._setup_simulation_properties(**kwargs)
         # Instantiate and configure each drone agent within the environment.
         self.drones = [self._create_drone(i, agent_id, n_images, depth_render, spawn_boxes, spawn_angles, **kwargs)
                        for i, agent_id in enumerate(range(n_agents))]
@@ -164,9 +166,15 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         self._action_space_in_preferred_format = True
         self._observation_space_in_preferred_format = True
         self._agent_ids = [drone.agent_id for drone in self.drones]
+        
+        # Initialize collision tracking dictionaries.
+        self._bullet_geom_ids_to_drones = {}
+        self._drone_geom_ids_to_drones = {}
+        for drone in self.drones:
+            self._bullet_geom_ids_to_drones[drone.bullet.geom_id] = drone
+            self._drone_geom_ids_to_drones[drone.geom.id] = drone
+            
         MultiAgentEnv.__init__(self)
-        # Setup simulation properties, such as timestep and rendering frequency.
-        self._setup_simulation_properties(**kwargs)
     
     def _create_drone(self, index: int, agent_id: int, n_images: int, depth_render: bool,
                       spawn_boxes: Sequence[np.ndarray],
@@ -204,13 +212,6 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         self.data = MjData(self.model)  # Reinitialize data with the updated model.
         self.i = 0  # Frame counter.
         self.max_time = kwargs.get('max_time', 100)  # Maximum simulation time.
-        
-        # Initialize collision tracking dictionaries.
-        self._bullet_geom_ids_to_drones = {}
-        self._drone_geom_ids_to_drones = {}
-        for drone in self.drones:
-            self._bullet_geom_ids_to_drones[drone.bullet.geom_id] = drone
-            self._drone_geom_ids_to_drones[drone.geom.id] = drone
     
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None) -> Tuple[
         MultiAgentDict, MultiAgentDict]:
@@ -236,6 +237,16 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         """
         for drone in self.drones:
             drone.reset()
+            
+    @property
+    def ctrl(self) -> np.ndarray:
+        """
+        Returns the control signals for each drone in the environment.
+
+        :return: A 1D NumPy array containing the control signals for each drone.
+        :rtype: np.ndarray
+        """
+        return np.concatenate([drone.motor_controls for drone in self.drones]).flatten()
     
     def step(self, action: ActType) \
             -> Tuple[MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict]:
@@ -253,6 +264,7 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         for drone in self.drones:
             drone.act(action[drone.agent_id])
             drone.update()
+        mj_step(self.model, self.data, self.frame_skip)
         shooting_drones, hit_drones = self.collisions()
         for drone in shooting_drones:
             drone.scored_hit = True
@@ -274,7 +286,7 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         :rtype: tuple[list[Drone], list[Drone]]
         """
         contact_list: _MjContactList = self.data.contact
-        if not contact_list.dim:
+        if not hasattr(contact_list, 'geom'):
             return [], []
         contact_geom_pairs: np.ndarray = np.array(contact_list.geom)
         

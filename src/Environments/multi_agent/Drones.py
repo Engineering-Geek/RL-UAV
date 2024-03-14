@@ -524,7 +524,7 @@ class Drone:
         shoot = bool(action["shoot"][0])
         motor_controls = action["motor"]
         for actuator, value in zip(self._actuators, motor_controls):
-            actuator.ctrl = value
+            self.data.ctrl[actuator.id] = value
         if shoot:
             self.bullet.shoot()
     
