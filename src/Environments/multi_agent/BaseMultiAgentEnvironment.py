@@ -37,20 +37,18 @@ observations, rewards, and other information.
 
 Example
 -------
-```python
-if __name__ == "__main__":
-    env = BaseMultiAgentEnvironment(
-        n_agents=2,
-        n_images=2,
-        depth_render=False,
-        spawn_boxes=[np.array([[-10, -10, 0], [10, 10, 10]]) for _ in range(2)],
-        spawn_angles=[np.array([[-1, -1, -1], [1, 1, 1]]) for _ in range(2)]
-    )
-    env.reset()
-    for i in range(1000):
-        action = env.action_space.sample()
-        obs, reward, truncated, done, info = env.step(action)
-```
+.. code-block:: python
+
+    if __name__ == "__main__":
+        env = BaseMultiAgentEnvironment(
+            n_agents=2,
+            n_images=2,
+            depth_render=False
+        )
+        env.reset()
+        for i in range(1000):
+            action = env.action_space.sample()
+            obs, reward, truncated, done, info = env.step(action)
 
 Notes
 -----
@@ -61,7 +59,7 @@ Notes
 
 See Also
 --------
-`MujocoEnv`, `EzPickle`, `MultiAgentEnv`
+`gymnasium.envs.mujoco.MujocoEnv`, `gymnasium.utils.EzPickle`, `ray.rllib.env.MultiAgentEnv`
 
 """
 

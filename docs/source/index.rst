@@ -10,7 +10,7 @@ Welcome to RL-UAV's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-   src
+   modules
    custom/UAV
    custom/MultibodyUAV
 
