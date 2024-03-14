@@ -173,7 +173,7 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         for drone in self.drones:
             self._bullet_geom_ids_to_drones[drone.bullet.geom_id] = drone
             self._drone_geom_ids_to_drones[drone.geom.id] = drone
-            
+        
         MultiAgentEnv.__init__(self)
     
     def _create_drone(self, index: int, agent_id: int, n_images: int, depth_render: bool,
@@ -213,8 +213,8 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         self.i = 0  # Frame counter.
         self.max_time = kwargs.get('max_time', 100)  # Maximum simulation time.
     
-    def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None) -> Tuple[
-        MultiAgentDict, MultiAgentDict]:
+    def reset(self, *, seed: Optional[int] = None,
+              options: Optional[dict] = None) -> Tuple[MultiAgentDict, MultiAgentDict]:
         """
         Resets the environment to an initial state, reinitializing the positions, orientations, and other relevant
         state variables of all drones. This method is typically called at the beginning of an episode.
@@ -237,7 +237,7 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         """
         for drone in self.drones:
             drone.reset()
-            
+    
     @property
     def ctrl(self) -> np.ndarray:
         """
