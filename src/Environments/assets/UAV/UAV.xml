@@ -23,7 +23,7 @@
     <!-- Geometric properties: friction, density, and collision margin -->
     <geom friction="1 0.5 0.5" density="1000" margin="0.01"/>
     <!-- Motor properties: control range -->
-    <motor ctrlrange="0.0 10.0"/>
+    <motor ctrlrange="0.0 5" ctrllimited="true"/>
   </default>
 
   <!-- World body definition -->
@@ -65,10 +65,14 @@
       <site name="drone_imu" pos="0 0 0.1" type="sphere" size="0.01"/>
 
       <!-- Light Camera 1 -->
-      <camera name="camera_1" pos="0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1" resolution="64 64"/>
+      <camera name="camera_1" pos="0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1"/>
 
       <!-- Light Camera 2 -->
-      <camera name="camera_2" pos="-0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1" resolution="64 64"/>
+      <camera name="camera_2" pos="-0.0025 0.055 0.003" xyaxes="-1 0 0 0 0 1"/>
+    </body>
+    <body name="drone_bullet" pos="0 0 .1">
+      <joint name="drone_bullet_joint" type="free"/>
+      <geom name="drone_bullet_geom" type="sphere" size="0.01" mass="0.1"/>
     </body>
   </worldbody>
 

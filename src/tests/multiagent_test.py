@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from src.Environments.multi_agent.BaseMultiAgentEnvironment import BaseMultiAgentEnvironment
+from src.Environments.multi_agent.MultiAgentDroneEnvironment import MultiAgentDroneEnvironment
 from time import time
 from typing import List
 from logging import getLogger
@@ -9,14 +9,14 @@ logger = getLogger(__name__)
 
 
 @pytest.fixture
-def base_multi_agent_environment() -> List[BaseMultiAgentEnvironment]:
+def base_multi_agent_environment() -> List[MultiAgentDroneEnvironment]:
     n_agents = [1, 2, 3]
     n_images = [0, 1, 2]
     envs = []
     for n_agent in n_agents:
         for n_image in n_images:
             start = time()
-            envs.append(BaseMultiAgentEnvironment(
+            envs.append(MultiAgentDroneEnvironment(
                 n_agents=n_agent,
                 n_images=n_image,
                 frame_skip=1,
@@ -57,7 +57,7 @@ def test_bullet_logic(base_multi_agent_environment):
                 "shoot": np.array([0]),
             },
         })
-        if env.drones[0].bullet.bullet_body.cvel[:3] == pytest.approx(np.array([0.0, 0.0, 0.0]), abs=tolerance):
+        if env.drones[0].bullet.bullet_body_data.cvel[:3] == pytest.approx(np.array([0.0, 0.0, 0.0]), abs=tolerance):
             no_shot_correct += 1
     shot_correct = 0
     for _ in range(100):
@@ -67,7 +67,7 @@ def test_bullet_logic(base_multi_agent_environment):
                 "shoot": np.array([1]),
             },
         })
-        if env.drones[0].bullet.bullet_body.cvel[:3] != pytest.approx(np.array([0.0, 0.0, 0.0]), abs=tolerance):
+        if env.drones[0].bullet.bullet_body_data.cvel[:3] != pytest.approx(np.array([0.0, 0.0, 0.0]), abs=tolerance):
             shot_correct += 1
     env.close()
     logger.info(f"Bullet Logic Test Passed: {no_shot_correct} no shots correct, {shot_correct} shots correct")
@@ -108,5 +108,12 @@ def test_done(base_multi_agent_environment):
 
 def test_metrics(base_multi_agent_environment):
     for env in base_multi_agent_environment:
-        metrics = env.metrics
+        metrics = env.info
         assert isinstance(metrics, dict), "Metrics is not a dictionary"
+
+
+def test_data(base_multi_agent_environment):
+    for env in base_multi_agent_environment:
+        for drone in env.drones:
+            assert env.data is drone.data, "env.data and drone.data are not the same object"
+            

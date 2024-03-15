@@ -43,7 +43,8 @@ Example
         env = BaseMultiAgentEnvironment(
             n_agents=2,
             n_images=2,
-            depth_render=False
+            depth_render=False,
+            drone_class=BaseDrone
         )
         env.reset()
         for i in range(1000):
@@ -63,7 +64,7 @@ See Also
 
 """
 
-from typing import Optional, Tuple, Sequence
+from typing import Optional, Tuple, Sequence, Type
 
 import numpy as np
 from gymnasium import Space
@@ -72,17 +73,17 @@ from gymnasium.envs.mujoco import MujocoEnv
 from gymnasium.spaces import Dict as SpaceDict
 from gymnasium.utils import EzPickle
 from mujoco import MjData, mj_step
-from mujoco._structs import _MjContactList
+from mujoco._structs import _MjContactList, _MjDataGeomViews
 from numpy.random import default_rng
 from ray.rllib.env import MultiAgentEnv
 from ray.rllib.env.multi_agent_env import AgentID
 from ray.rllib.utils.typing import MultiAgentDict
 
-from src.Environments.multi_agent.Drones import Drone
+from src.Environments.multi_agent.drones.BaseDrone import BaseDrone, Bullet
 from src.utils.multiagent_model_generator import save_multiagent_model
 
 
-class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
+class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
     """
     A multi-agent environment for drone simulation based on the MuJoCo physics engine.
     It supports rendering, interaction, and control of multiple drones capable of shooting and perception.
@@ -100,7 +101,7 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         "render_fps": 500
     }
     
-    def __init__(self, n_agents: int, n_images: int, depth_render: bool, **kwargs) -> None:
+    def __init__(self, n_agents: int, n_images: int, depth_render: bool, Drone: Type[BaseDrone], **kwargs) -> None:
         """
         Initializes a multi-agent environment tailored for drone simulations, using the MuJoCo physics engine.
         This environment supports multiple drones, each with capabilities for shooting and capturing images.
@@ -109,10 +110,12 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         :param int n_images: The number of images each drone should capture per simulation step. It affects the
                              observation space of each drone.
         :param bool depth_render: Determines if the drones should capture depth images (True) or RGB images (False).
-        :keyword Sequence[np.ndarray] spawn_boxes: (Optional) A list of 2x3 NumPy arrays where each array specifies the min and max
-                                                   (x, y, z) coordinates of the spawn box for each drone.
-        :keyword Sequence[np.ndarray] spawn_angles: (Optional) A list of 2x3 NumPy arrays where each array specifies the min and max
-                                                    (roll, pitch, yaw) angles for the initial orientation of each drone.
+        :param Type[BaseDrone] Drone: The class type for the drones to be instantiated in the environment.
+        :keyword Sequence[np.ndarray] spawn_boxes: (Optional) A list of 2x3 NumPy arrays where each array specifies the
+                                                    min and max (x, y, z) coordinates of the spawn box for each drone.
+        :keyword Sequence[np.ndarray] spawn_angles: (Optional) A list of 2x3 NumPy arrays where each array specifies the
+                                                    min and max (roll, pitch, yaw) angles for the initial orientation of
+                                                    each drone.
         :keyword float spacing: (Optional) Defines the spacing between agents in the environment. Default is 2.0.
         :keyword str save_dir: (Optional) Directory path to save the generated MuJoCo model file. If not specified,
                                the model is not saved.
@@ -138,7 +141,9 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         
         # Initialize the MuJoCo environment with the generated model and specified rendering options.
         height, width = kwargs.get('render_height', 32), kwargs.get('render_width', 32)
-        MujocoEnv.__init__(self, model_path=self.model_path, frame_skip=kwargs.get('frame_skip', 1),
+        self.frame_skip = kwargs.get('frame_skip', 1)
+        self.metadata['render_fps'] = int(np.round(1.0 / (0.002 * self.frame_skip)))
+        MujocoEnv.__init__(self, model_path=self.model_path, frame_skip=self.frame_skip,
                            observation_space=Space(), render_mode=kwargs.get('render_mode', 'rgb_array'),
                            height=height, width=width)
         
@@ -157,8 +162,8 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         # Setup simulation properties, such as timestep and rendering frequency.
         self._setup_simulation_properties(**kwargs)
         # Instantiate and configure each drone agent within the environment.
-        self.drones = [self._create_drone(i, agent_id, n_images, depth_render, spawn_boxes, spawn_angles, **kwargs)
-                       for i, agent_id in enumerate(range(n_agents))]
+        self.drones = [self._create_drone(Drone, i, agent_id, n_images, depth_render, spawn_boxes, spawn_angles,
+                                          **kwargs) for i, agent_id in enumerate(range(n_agents))]
         self.observation_space: SpaceDict[AgentID, Space[ObsType]] = SpaceDict({
             drone.agent_id: drone.observation_space for drone in self.drones})
         self.action_space: SpaceDict[AgentID, Space[ObsType]] = SpaceDict({
@@ -171,17 +176,29 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         self._bullet_geom_ids_to_drones = {}
         self._drone_geom_ids_to_drones = {}
         for drone in self.drones:
+            # Mapping bullets to their respective drones.
             self._bullet_geom_ids_to_drones[drone.bullet.geom_id] = drone
+            
+            # Mapping drone parts to their respective drones.
             self._drone_geom_ids_to_drones[drone.geom.id] = drone
+            self._drone_geom_ids_to_drones[drone.prop_geoms[0].id] = drone
+            self._drone_geom_ids_to_drones[drone.prop_geoms[1].id] = drone
+            self._drone_geom_ids_to_drones[drone.prop_geoms[2].id] = drone
+            self._drone_geom_ids_to_drones[drone.prop_geoms[3].id] = drone
+        
+        self.actuators = np.array([0] * self.model.nu)
+        self.floor_geom: _MjDataGeomViews = self.data.geom('floor')
+        self.time: float = self.data.time
         
         MultiAgentEnv.__init__(self)
     
-    def _create_drone(self, index: int, agent_id: int, n_images: int, depth_render: bool,
-                      spawn_boxes: Sequence[np.ndarray],
-                      spawn_angles: Sequence[np.ndarray], **kwargs) -> Drone:
+    def _create_drone(self, drone_class: Type[BaseDrone], index: int, agent_id: int,
+                      n_images: int, depth_render: bool, spawn_boxes: Sequence[np.ndarray],
+                      spawn_angles: Sequence[np.ndarray], **kwargs) -> BaseDrone:
         """
         Creates a drone object with specified parameters.
 
+        :param drone_class: The class type for the drone to be instantiated.
         :param index: Index of the drone in the environment.
         :param agent_id: Unique identifier for the agent.
         :param n_images: Number of images the drone captures in each step.
@@ -191,12 +208,12 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         :param kwargs: Additional arguments for drone creation.
         :return: An instance of the Drone class.
         """
-        return Drone(model=self.model, data=self.data, renderer=self.mujoco_renderer, n_images=n_images,
-                     depth_render=depth_render, index=index + 1, agent_id=agent_id, spawn_box=spawn_boxes[index],
-                     max_spawn_velocity=kwargs.get('max_spawn_velocity', 1),
-                     spawn_angle_range=spawn_angles[index], rng=kwargs.get('rng', default_rng()),
-                     map_bounds=kwargs.get('map_bounds', np.array([[-100, 100], [-100, 100], [0, 100]])),
-                     bullet_max_velocity=kwargs.get('bullet_max_velocity', 50))
+        return drone_class(model=self.model, data=self.data, renderer=self.mujoco_renderer,
+                           n_images=n_images, depth_render=depth_render, index=index + 1, agent_id=agent_id,
+                           spawn_box=spawn_boxes[index], max_spawn_velocity=kwargs.get('max_spawn_velocity', 1),
+                           spawn_angle_range=spawn_angles[index], rng=kwargs.get('rng', default_rng()),
+                           map_bounds=kwargs.get('map_bounds', np.array([[-100, 100], [-100, 100], [0, 100]])),
+                           bullet_max_velocity=kwargs.get('bullet_max_velocity', 50), max_time=self.max_time)
     
     def _setup_simulation_properties(self, **kwargs):
         """
@@ -221,14 +238,15 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
 
         :param seed: An optional seed to ensure deterministic reset behavior. Not currently used.
         :type seed: Optional[int]
-        :param options: An optional dictionary of reset options. Not currently used but can be extended for future functionalities.
+        :param options: An optional dictionary of reset options. Not currently used but can be extended for future
+            functionalities.
         :type options: Optional[dict]
         :return: A tuple containing the initial observations and metrics after the reset.
         :rtype: Tuple[MultiAgentDict, MultiAgentDict]
         """
         self.i = 0
         self.reset_model()
-        return self.observation(False), self.metrics
+        return self.observation(False), self.info
     
     def reset_model(self):
         """
@@ -262,60 +280,89 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         """
         self.i += 1
         for drone in self.drones:
+            drone.env_update()
             drone.act(action[drone.agent_id])
-            drone.update()
         mj_step(self.model, self.data, self.frame_skip)
-        shooting_drones, hit_drones = self.collisions()
+        shooting_drones, hit_drones, bullet_floor_contacts, drone_floor_contacts = self.collisions()
         for drone in shooting_drones:
-            drone.scored_hit = True
+            drone.scored_hit()
         for drone in hit_drones:
-            drone.got_hit = True
-            drone.alive = False
-        observation = self.observation(render=self.n_images > 0 and self.i % self.render_every == 0)
-        reward = self.reward
-        truncated = self.truncated
-        done = self.done
-        info = self.metrics
-        return observation, reward, truncated, done, info
+            drone.got_hit()
+        for bullet_id in bullet_floor_contacts:
+            self._bullet_geom_ids_to_drones[bullet_id].hit_floor()
+        for drone_id in drone_floor_contacts:
+            self._drone_geom_ids_to_drones[drone_id].hit_floor()
+        self.check_drone_bounds()
+        self.check_bullet_bounds()
+        return (self.observation(render=self.n_images > 0 and self.i % self.render_every == 0),
+                self.reward, self.truncated, self.done, self.info)
     
-    def collisions(self) -> tuple[list[Drone], list[Drone]]:
+    def collisions(self) -> tuple[list[BaseDrone], list[BaseDrone], list[Bullet], list[BaseDrone]]:
         """
-        Checks for and processes collisions between drones and bullets within the environment.
+        Checks for and processes collisions between drones and bullets within the environment. Drone includes both
+            body and 4 propellers.
 
         :return: A tuple of two lists containing the drones that have shot and been hit, respectively.
-        :rtype: tuple[list[Drone], list[Drone]]
+        :rtype: tuple[list[BaseDrone], list[Drone]]
         """
         contact_list: _MjContactList = self.data.contact
-        if not hasattr(contact_list, 'geom'):
-            return [], []
-        contact_geom_pairs: np.ndarray = np.array(contact_list.geom)
+        if not hasattr(contact_list, 'geom1') or not hasattr(contact_list, 'geom2'):
+            return [], [], [], []
+        contact_geom_pairs: np.ndarray = np.array([contact_list.geom1, contact_list.geom2]).T
         
         # Initialize sets to keep track of shooting and hit drones.
         shooting_drones = set()
         hit_drones = set()
+        bullet_floor_contacts = set()
+        drone_floor_contacts = set()
         
         # Loop through each contact pair to detect collisions.
         for geom_1_id, geom_2_id in contact_geom_pairs:
             # Check each pair to see if it involves a bullet that is flying and a drone.
-            for bullet_geom_id, drone_geom_id in [(geom_1_id, geom_2_id), (geom_2_id, geom_1_id)]:
-                # Check if the bullet is flying and has hit a drone.
-                if (bullet_geom_id in self._bullet_geom_ids_to_drones and
-                        drone_geom_id in self._drone_geom_ids_to_drones):
-                    shooting_drone = self._bullet_geom_ids_to_drones[bullet_geom_id]
-                    hit_drone = self._drone_geom_ids_to_drones[drone_geom_id]
-                    
-                    # Only consider the collision if the bullet is flying.
-                    if shooting_drone.bullet.is_flying:
-                        shooting_drones.add(shooting_drone)
-                        hit_drones.add(hit_drone)
-                        break  # Stop checking if we've found a valid collision.
+            for geom_1, geom_2 in [(geom_1_id, geom_2_id), (geom_2_id, geom_1_id)]:
+                # Check if the bullet has hit a drone (except the parent drone).
+                # region Bullet - Drone Collisions
+                if (geom_1 in self._bullet_geom_ids_to_drones.keys() and
+                        geom_2 in self._drone_geom_ids_to_drones.keys() and
+                        self._bullet_geom_ids_to_drones[geom_1].geom.id != geom_2):
+                    shooting_drone = self._bullet_geom_ids_to_drones[geom_1]
+                    hit_drone = self._drone_geom_ids_to_drones[geom_2]
+                    shooting_drones.add(shooting_drone)
+                    hit_drones.add(hit_drone)
+                # endregion
+                # region Bullet - Floor Collisions
+                elif geom_1 in self._bullet_geom_ids_to_drones.keys() and \
+                        geom_2 == self.floor_geom.id:
+                    bullet_floor_contacts.add(geom_1)
+                # endregion
+                # region Drone - Floor Collisions
+                elif geom_1 in self._drone_geom_ids_to_drones.keys() and \
+                        geom_2 == self.floor_geom.id:
+                    drone_floor_contacts.add(geom_1)
+                # endregion
             
             # Check for Drone - Drone Collisions, ensuring we're not considering the bullet twice.
             if geom_1_id in self._drone_geom_ids_to_drones and geom_2_id in self._drone_geom_ids_to_drones:
                 hit_drones.add(self._drone_geom_ids_to_drones[geom_1_id])
                 hit_drones.add(self._drone_geom_ids_to_drones[geom_2_id])
         
-        return list(shooting_drones), list(hit_drones)
+        return list(shooting_drones), list(hit_drones), list(bullet_floor_contacts), list(drone_floor_contacts)
+    
+    def check_bullet_bounds(self):
+        """
+        Checks if any bullet has gone out of bounds and resets it if necessary.
+        """
+        for drone in self.drones:
+            if drone.bullet.out_of_bounds:
+                drone.on_bullet_out_of_bounds()
+    
+    def check_drone_bounds(self):
+        """
+        Checks if any drone has gone out of bounds and resets it if necessary.
+        """
+        for drone in self.drones:
+            if not drone.in_bounds:
+                drone.on_out_of_bounds()
     
     def observation(self, render: bool = False) -> MultiAgentDict:
         """
@@ -338,9 +385,7 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         :return: A dictionary mapping each agent's ID to its computed reward.
         :rtype: MultiAgentDict
         """
-        return dict({
-            drone.agent_id: drone.reward for drone in self.drones
-        })
+        return {drone.agent_id: drone.reward for drone in self.drones}
     
     @property
     def truncated(self) -> MultiAgentDict:
@@ -350,12 +395,7 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         :return: A dictionary mapping each agent's ID to a boolean indicating whether its episode should be truncated.
         :rtype: MultiAgentDict
         """
-        # Cases for general truncation: time limit reached, alive drones < 2
-        if self.data.time >= self.max_time or sum(drone.alive for drone in self.drones) < 2:
-            return {drone.agent_id: True for drone in self.drones}
-        
-        # Cases for individual truncation: drone is dead
-        return {drone.agent_id: not drone.alive for drone in self.drones}
+        return {drone.agent_id: drone.truncated for drone in self.drones}
     
     @property
     def done(self) -> MultiAgentDict:
@@ -365,33 +405,14 @@ class BaseMultiAgentEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         :return: A dictionary mapping each agent's ID to a boolean indicating whether its episode is done.
         :rtype: MultiAgentDict
         """
-        only_one_alive = sum(drone.alive for drone in self.drones) == 1
-        return {drone.agent_id: only_one_alive for drone in self.drones}
+        return {drone.agent_id: drone.done for drone in self.drones}
     
     @property
-    def metrics(self):
+    def info(self) -> MultiAgentDict:
         """
         Collects and returns additional metrics about the environment's current state.
 
         :return: A dictionary of metrics.
-        :rtype: dict
+        :rtype: MultiAgentDict
         """
-        return {}
-
-
-def test_multi_agent_env():
-    env = BaseMultiAgentEnvironment(
-        n_agents=2,
-        n_images=2,
-        depth_render=False
-    )
-    env.reset()
-    drones = env.drones
-    # print(obs)
-    for i in range(1000):
-        action = env.action_space.sample()
-        obs, reward, truncated, done, info = env.step(action)
-
-
-if __name__ == "__main__":
-    test_multi_agent_env()
+        return {drone.agent_id: drone.info for drone in self.drones}

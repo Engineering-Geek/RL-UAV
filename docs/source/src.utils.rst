@@ -20,6 +20,14 @@ src.utils.multiagent\_model\_generator module
    :undoc-members:
    :show-inheritance:
 
+src.utils.simulation\_metrics module
+------------------------------------
+
+.. automodule:: src.utils.simulation_metrics
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 src.utils.viewer module
 -----------------------
 
