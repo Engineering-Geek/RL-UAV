@@ -44,7 +44,7 @@ Example
             n_agents=2,
             n_images=2,
             depth_render=False,
-            drone_class=BaseDrone
+            drone_class=BaseDrone   # Replace with a custom drone class
         )
         env.reset()
         for i in range(1000):
@@ -64,7 +64,7 @@ See Also
 
 """
 
-from typing import Optional, Tuple, Sequence, Type
+from typing import Optional, Tuple, Sequence, Type, Dict, List
 
 import numpy as np
 from gymnasium import Space
@@ -79,18 +79,66 @@ from ray.rllib.env import MultiAgentEnv
 from ray.rllib.env.multi_agent_env import AgentID
 from ray.rllib.utils.typing import MultiAgentDict
 
-from src.Environments.multi_agent.drones.BaseDrone import BaseDrone, Bullet
+from Environments.multi_agent.core.BaseDrone import BaseDrone, Bullet
 from src.utils.multiagent_model_generator import save_multiagent_model
 
 
 class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
     """
-    A multi-agent environment for drone simulation based on the MuJoCo physics engine.
-    It supports rendering, interaction, and control of multiple drones capable of shooting and perception.
+    Simulates a multi-agent environment for drone interactions using MuJoCo.
 
-    The environment initializes with a specified number of drones, each with its own attributes and capabilities,
-    like shooting bullets and capturing images. The environment facilitates the interaction between these drones
-    and tracks their states throughout the simulation.
+    This class provides a detailed simulation environment for multiple drones, supporting functionalities like
+    movement, perception, and interaction within a shared 3D space. It extends the capabilities of MuJoCoEnv,
+    allowing for advanced physics-based simulations with high precision and realism.
+
+    Attributes
+    ----------
+    metadata : dict
+        Metadata for the environment, including available render modes and rendering FPS.
+    n_agents : int
+        The number of drone agents in the environment.
+    n_images : int
+        The number of images each drone captures per simulation step.
+    drones : List[BaseDrone]
+        A list of drones present in the environment, each represented by an instance of BaseDrone or its subclass.
+
+    Parameters
+    ----------
+    n_agents : int
+        The number of drone agents to initialize within the environment.
+    n_images : int
+        The number of images to capture per drone per simulation step.
+    depth_render : bool
+        If set to True, drones capture depth images; otherwise, they capture RGB images.
+    Drone : Type[BaseDrone]
+        The drone class to be used for creating drone instances in the environment.
+    **kwargs
+        Additional keyword arguments for environment configuration, including render settings and drone initialization parameters.
+
+    Methods
+    -------
+    reset(seed: Optional[int] = None, options: Optional[dict] = None)
+        Resets the environment to an initial state, reinitializing drones' positions and states.
+    step(action: ActType)
+        Advances the environment state by one timestep, processing drones' actions and interactions.
+    drone_aim()
+        Calculates the angles between drones' forward directions and their lines of sight to other drones.
+    collisions()
+        Detects and processes collisions within the environment, including drone-drone and drone-bullet collisions.
+    check_bullet_bounds()
+        Checks and processes out-of-bound bullets in the simulation.
+    check_drone_bounds()
+        Verifies and handles drones going out of the designated bounds.
+    observation(render: bool = False)
+        Constructs and returns the observation for each drone in the environment.
+    reward()
+        Computes and returns the reward for each drone based on the current simulation state.
+    truncated()
+        Indicates whether the episode should be truncated for each drone.
+    done()
+        Determines whether the episode has ended for each drone.
+    info()
+        Provides additional information and metrics about the current state of the environment.
     """
     metadata = {
         "render_modes": [
@@ -269,20 +317,35 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
     def step(self, action: ActType) \
             -> Tuple[MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict]:
         """
-        Advances the environment by one timestep. Applies the provided actions to the drones, updates their states,
-        checks for collisions, and computes the rewards.
+        Executes one timestep within the environment, processing the actions taken by each drone, updating their states,
+        evaluating collisions, and determining rewards based on their actions and interactions.
+
+        The method follows these steps:
+        1. Increment the internal timestep counter.
+        2. Apply the specified actions to each drone and update their states accordingly.
+        3. Advance the physical simulation by a specified number of timesteps.
+        4. Detect and process any collisions that occur during the timestep.
+        5. Evaluate and process the landing of drones or bullets on the ground.
+        6. Check and handle any drones or bullets that go out of bounds.
+        7. Calculate and assign rewards based on the positioning of drones within each other's camera views.
+        8. Compile and return the new observations, rewards, termination flags, and additional information for each agent.
 
         :param action: A dictionary mapping each drone's agent ID to its corresponding action.
         :type action: ActType
-        :return: A tuple containing the new observations, rewards, truncation flags, done flags, and additional info for
-            each agent.
+        :return: A tuple containing updated observations, rewards, termination flags, done flags, and additional info for
+                 each agent, in respective order.
         :rtype: Tuple[MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict]
         """
         self.i += 1
+        # Action application and state update
         for drone in self.drones:
             drone.env_update()
             drone.act(action[drone.agent_id])
+        
+        # Simulation step
         mj_step(self.model, self.data, self.frame_skip)
+        
+        # Collision detection and processing
         shooting_drones, hit_drones, bullet_floor_contacts, drone_floor_contacts = self.collisions()
         for drone in shooting_drones:
             drone.scored_hit()
@@ -292,18 +355,80 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
             self._bullet_geom_ids_to_drones[bullet_id].hit_floor()
         for drone_id in drone_floor_contacts:
             self._drone_geom_ids_to_drones[drone_id].hit_floor()
+        
+        # Boundary checks
         self.check_drone_bounds()
         self.check_bullet_bounds()
+        
+        # Reward calculation based on drone positioning
+        drones_aiming_at, drones_aimed_at = self.drone_aim()
+        for drone in self.drones:
+            drone.aiming_at(drones_aiming_at[drone])
+            drone.aimed_at(drones_aimed_at[drone])
+        
         return (self.observation(render=self.n_images > 0 and self.i % self.render_every == 0),
                 self.reward, self.truncated, self.done, self.info)
     
-    def collisions(self) -> tuple[list[BaseDrone], list[BaseDrone], list[Bullet], list[BaseDrone]]:
+    def drone_aim(self) -> Tuple[Dict[BaseDrone, List[Tuple[BaseDrone, float]]],
+                                 Dict[BaseDrone, List[Tuple[BaseDrone, float]]]]:
+        """
+        Determines the visibility and angular relationship between drones in the simulation. For each pair of drones,
+        it calculates the angle between the direction one drone is facing and the line of sight to the other drone.
+    
+        The method calculates the angle :math:`\\theta_{ij}` between the forward direction of drone_i (:math:`f_i`)
+        and the unit vector (:math:`u_{ij}`) pointing from drone_i to drone_j. The angle is computed using the dot
+        product formula:
+    
+        .. math::
+    
+            \\theta_{ij} = \\arccos\\left(\\frac{f_i \\cdot u_{ij}}{||f_i|| \\times ||u_{ij}||}\\right)
+    
+        where:
+    
+        - :math:`f_i` is the forward unit vector of drone_i.
+        - :math:`u_{ij}` is the unit vector from drone_i to drone_j.
+        - :math:`\\cdot` denotes the dot product.
+        - :math:`||x||` denotes the norm of vector :math:`x`.
+    
+        Results are stored in two dictionaries mapping each drone to a list of tuples, where each tuple contains
+        a visible drone and the corresponding angle.
+    
+        :return: A tuple of two dictionaries. The first maps each drone to a list of drones it can see along with the angle.
+                 The second maps each drone to a list of drones that can see it, along with the angle.
+        :rtype: Tuple[Dict[BaseDrone, List[Tuple[BaseDrone, float]]], Dict[BaseDrone, List[Tuple[BaseDrone, float]]]]
+        """
+        
+        drones_aiming_at = {drone: [] for drone in self.drones}
+        drones_aimed_at = {drone: [] for drone in self.drones}
+        
+        positions = {drone: drone.position for drone in self.drones}
+        directions = {drone: drone.forward_unit_vector for drone in self.drones}
+        
+        for aiming_drone in self.drones:
+            for aimed_at_drone in self.drones:
+                if aimed_at_drone is not aiming_drone:
+                    aiming_drone_pos = positions[aiming_drone]
+                    aiming_drone_dir = directions[aiming_drone]
+                    aimed_at_drone_pos = positions[aimed_at_drone]
+
+                    drone_to_drone_vector = aimed_at_drone_pos - aiming_drone_pos
+                    drone_to_drone_vector /= np.linalg.norm(drone_to_drone_vector)
+
+                    theta = np.arccos(np.clip(np.dot(aiming_drone_dir, drone_to_drone_vector), -1.0, 1.0))
+
+                    # Update both drones' records in a single pass
+                    drones_aiming_at[aiming_drone].append((aimed_at_drone, theta))
+                    drones_aimed_at[aimed_at_drone].append((aiming_drone, theta))
+        
+        return drones_aiming_at, drones_aimed_at
+    
+    def collisions(self) -> tuple[List[BaseDrone], List[BaseDrone], List[Bullet], List[BaseDrone]]:
         """
         Checks for and processes collisions between drones and bullets within the environment. Drone includes both
             body and 4 propellers.
 
         :return: A tuple of two lists containing the drones that have shot and been hit, respectively.
-        :rtype: tuple[list[BaseDrone], list[Drone]]
+        :rtype: tuple[List[BaseDrone], List[Drone]]
         """
         contact_list: _MjContactList = self.data.contact
         if not hasattr(contact_list, 'geom1') or not hasattr(contact_list, 'geom2'):

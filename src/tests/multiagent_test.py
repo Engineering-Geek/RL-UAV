@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from src.Environments.multi_agent.MultiAgentDroneEnvironment import MultiAgentDroneEnvironment
+from Environments.multi_agent.core.MultiAgentDroneEnvironment import MultiAgentDroneEnvironment
 from time import time
 from typing import List
 from logging import getLogger

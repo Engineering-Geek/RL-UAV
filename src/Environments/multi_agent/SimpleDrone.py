@@ -1,4 +1,6 @@
-from src.Environments.multi_agent.drones.BaseDrone import BaseDrone
+from typing import List, Tuple
+
+from Environments.multi_agent.core.BaseDrone import BaseDrone
 
 
 class SimpleDrone(BaseDrone):
@@ -45,6 +47,12 @@ class SimpleDrone(BaseDrone):
     
     def scored_hit(self):
         self._hit_target = True
+    
+    def aiming_at(self, drones: List[Tuple[BaseDrone, float]]):
+        pass
+    
+    def aimed_at(self, drones: List[Tuple[BaseDrone, float]]):
+        pass
     
     def env_update(self):
         pass

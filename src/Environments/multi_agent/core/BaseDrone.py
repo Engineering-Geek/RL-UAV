@@ -11,7 +11,7 @@ Classes:
 from __future__ import annotations
 
 from abc import abstractmethod, ABC
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple
 
 import numpy as np
 import quaternion
@@ -27,18 +27,23 @@ from ray.rllib.utils.typing import EnvObsType, EnvActionType
 
 class Bullet:
     """
-    Represents a bullet within a MuJoCo simulation environment, capable of being fired and interacting with other entities.
+    Represents a bullet in a MuJoCo simulation environment, capable of interacting with drones and the environment.
 
     Attributes:
         parent (BaseDrone): The drone that fired the bullet.
-        shoot_velocity (float): The initial velocity with which the bullet is fired.
-        bullet_body_data (_MjDataBodyViews): Reference to the bullet's body in the simulation.
-        barrel_end (_MjDataSiteViews): Reference to the drone's barrel end site to determine the firing direction.
-        body_free_joint (_MjDataJointViews): Joint associated with the bullet for positional updates.
-        bullet_geom_data (_MjDataGeomViews): Geometry of the bullet for collision detection.
-        _geom_id (int): Internal ID of the bullet's geometry.
-        starting_position (np.ndarray): The position from which the bullet is fired.
-        is_flying (bool): Flag indicating whether the bullet is currently in motion.
+        shoot_velocity (float): The initial velocity at which the bullet is fired.
+        bullet_body_data (_MjDataBodyViews): Reference to the bullet's body data in the simulation.
+        barrel_end (_MjDataSiteViews): Reference to the drone's barrel end site for determining the firing direction.
+        body_free_joint (_MjDataJointViews): Joint data for the bullet, used for updating its position.
+        bullet_geom_data (_MjDataGeomViews): Bullet's geometry data for collision detection.
+        _geom_id (int): Internal ID of the bullet's geometry for referencing in the simulation.
+        starting_position (np.ndarray): Initial position from which the bullet is fired.
+
+    Methods:
+        reset(): Resets the bullet to its initial state and position.
+        shoot(): Fires the bullet, setting its velocity and updating its state in the simulation.
+        out_of_bounds(): Checks if the bullet has left the designated simulation area.
+        is_flying(): Determines if the bullet is currently in motion within the simulation.
     """
     
     def __init__(self, parent: BaseDrone, shoot_velocity: float) -> None:
@@ -98,7 +103,7 @@ class Bullet:
         """
         
         if not self.is_flying:
-            aim_direction = self.parent.body.xmat.reshape(3, 3) @ np.array([1, 0, 0])
+            aim_direction = self.parent.forward_unit_vector
             bullet_velocity = aim_direction * self.shoot_velocity + self.parent.body.cvel[3:]
             self.body_free_joint.qpos[:3] = self.barrel_end.xpos
             self.body_free_joint.qvel[:3] = bullet_velocity
@@ -140,7 +145,7 @@ class BaseDrone(ABC):
     Subclasses must implement various methods to define the drone's behavior, including movement, image capture,
     and interaction with the simulation environment.
     
-    # Execution order in step in MultiAgentDroneEnvironment:
+    Execution order in step in MultiAgentDroneEnvironment:
         1. update the environment (env_update)
         2. step the environment
         3. check for any collisions (bullet, drone, floor) and call the appropriate methods (got_hit, scored_hit, hit_floor, bullet_hit_floor) for each Drone
@@ -148,68 +153,63 @@ class BaseDrone(ABC):
         5. reset parameters if necessary; very useful for sparse rewards
     
     
-    # Implementing Sparse Rewards and Penalties:
+    Implementing Sparse Rewards and Penalties:
         1. Declare a boolean flag for when the drone should incur a penalty or reward with a default value of False
         2. Declare the functions or reward values for the penalty or reward
         3. Switch the flag in the appropriate methods (got_hit, scored_hit, hit_floor, bullet_hit_floor, out_of_bounds, bullet_out_of_bounds)
         4. In the reward method, check the flag and return the appropriate reward or penalty function (or value)
         5. Reset the flag in the reset_params method, which is called at the beginning of each step
         
-    # Implementing Continuous Rewards and Penalties:
+    Implementing Continuous Rewards and Penalties:
         1. Declare a variable to store the reward or penalty function (or value)
         2. Calculate the reward or penalty in the reward method
     
     View the SimpleDrone class for an example implementation of the above steps (src/Environments/multi_agent/drones/SimpleDrone.py).
     
-    Attributes:
-        just_shot (bool): A flag indicating whether the drone has just fired a bullet.
-        model (MjModel): The MuJoCo model associated with the simulation environment.
-        data (MjData): The data structure containing the current state of the simulation.
-        index (int): A unique identifier for the drone within the simulation.
-        agent_id (AgentID): A unique identifier used to track the drone within a larger multi-agent simulation or environment.
-        spawn_box (np.ndarray): The 3D area within which the drone can be initialized at the start of the simulation.
-        spawn_angle_range (np.ndarray): The range of angles at which the drone can be initialized.
-        max_spawn_velocity (float): The maximum velocity at which the drone can be spawned.
-        map_bounds (np.ndarray): The boundaries of the environment in which the drone operates.
-        n_images (int): The number of images the drone should capture in each simulation step.
-        depth_render (bool): A boolean indicating whether the images captured by the drone should be depth maps instead of RGB images.
-        height (int): The height of the images captured by the drone.
-        width (int): The width of the images captured by the drone.
-        fire_threshold (float): The threshold for firing a bullet.
-        rng (Generator): An optional random number generator that can be used for initializing the drone with random positions, velocities, or orientations.
-        starting_position (np.ndarray): The position from which the drone was spawned.
-        max_time (float): The maximum time for an episode (in seconds).
-        bullet (Bullet): The bullet fired by the drone.
-        alive (bool): A flag indicating whether the drone is currently active or alive.
-        renderer (MujocoRenderer): An instance of the renderer used for generating visualizations of the simulation.
-        _camera_1_id (int): The ID of the first camera used by the drone to capture images.
-        _camera_2_id (int): The ID of the second camera used by the drone to capture images.
-        _image_1 (np.ndarray): An array representing the image captured by the first camera.
-        _image_2 (np.ndarray): An array representing the image captured by the second camera.
-        _body (_MjDataBodyViews): The drone's body within the simulation.
-        _free_joint (_MjDataJointViews): The free joint associated with the drone.
-        _geom (_MjDataGeomViews): The geometry of the drone within the simulation.
-        _gyro (_MjDataSensorViews): The gyroscope sensor associated with the drone.
-        _accelerometer (_MjDataSensorViews): The accelerometer sensor associated with the drone.
-        _frame_quat (_MjDataSensorViews): The sensor providing the drone's orientation in quaternion format.
-        _floor_geom_id (int): The ID of the floor geometry within the simulation.
-        _actuators (List[_MjDataActuatorViews]): A list of actuators associated with the drone.
-        _dead_position (np.ndarray): The default position when the drone is considered 'dead' or inactive.
-        initial_quat (np.ndarray): The initial orientation of the drone.
-    
+    Initialization Parameters:
+        - model (MjModel): The MuJoCo model of the simulation environment.
+        - data (MjData): The simulation's current state data.
+        - renderer (MujocoRenderer): Renderer for generating simulation visualizations.
+        - n_images (int): Number of images the drone captures per simulation step.
+        - depth_render (bool): Indicates if the drone captures depth images.
+        - index (int): The drone's unique identifier in the simulation.
+        - agent_id (AgentID): The drone's unique agent identifier in a multi-agent context.
+        - spawn_box (np.ndarray): 3D box defining the drone's initial spawn area.
+        - max_spawn_velocity (float): Maximum initial velocity for the drone.
+        - spawn_angle_range (np.ndarray): Range of initial orientation angles.
+        - map_bounds (np.ndarray): Boundaries of the simulation environment.
+        - rng (Generator, optional): Random number generator for drone initialization.
+        - bullet_max_velocity (float): Maximum velocity of fired bullets.
+        - height (int): Height of the captured images.
+        - width (int): Width of the captured images.
+        - fire_threshold (float): Threshold value for bullet firing.
+        - max_time (float): Maximum duration of a simulation episode.
 
-    Abstract Methods to Implement:
-        - reset: Resets the drone's state to its initial conditions.
-        - observation: Generates an observation of the drone's current state.
-        - act: Applies an action to the drone, influencing its motors and potentially other actuators.
-        - env_update: Updates the environment based on the drone's current state.
-        - reward: Calculates the reward or penalty for the drone based on its current state.
-        - reset_params: Resets the drone's reward flags and other parameters.
-        - got_hit: A method to call when the drone gets hit by a bullet.
-        - hit_floor: A method to call when the drone hits the floor.
-        - on_bullet_out_of_bounds: A method to call when the bullet goes out of bounds.
-        - on_out_of_bounds: A method to call when the drone goes out of bounds.
-        - scored_hit: A method to call when the drone scores a hit on a target.
+    Attributes:
+        - just_shot (bool): Indicates if the drone recently fired a bullet.
+        - alive (bool): Status indicating if the drone is active in the simulation.
+        - bullet (Bullet): Associated Bullet object representing the drone's ammunition.
+        - renderer (MujocoRenderer): Renderer used for capturing drone's perspective images.
+        - observation_space (EnvObsType): The drone's observation space definition.
+        - action_space (EnvActionType): The drone's action space definition.
+
+    Abstract Methods:
+        - reset(): Resets the drone's state to initial conditions.
+        - observation(render): Generates an observation of the drone's current state.
+        - act(action): Applies an action to the drone.
+        - env_update(): Updates the environment based on the drone's current state and actions.
+        - reward(): Calculates and returns the drone's reward.
+        - reset_params(): Resets the drone's internal parameters.
+        - got_hit(): Logic for when the drone gets hit by a projectile.
+        - scored_hit(): Logic for when the drone hits another target.
+        - hit_floor(): Logic for when the drone collides with the ground.
+        - on_out_of_bounds(): Logic for when the drone exits the simulation boundaries.
+        - on_bullet_out_of_bounds(): Logic for when a fired bullet exits the simulation boundaries.
+        - aiming_at(drones): Logic for when the drone is aiming at other drones.
+        - aimed_at(drones): Logic for when other drones are aiming at this drone.
+        - truncated(): Determines if the drone's episode should be truncated.
+        - done(): Determines if the drone's episode is completed.
+        - info(): Provides additional drone state and performance metrics.
     """
     
     def __init__(self, model: MjModel, data: MjData, renderer: MujocoRenderer, n_images: int,
@@ -387,6 +387,21 @@ class BaseDrone(ABC):
             camera_id=self._camera_2_id,
         )
         return self._image_1, self._image_2
+    
+    @property
+    def forward_unit_vector(self) -> np.ndarray:
+        """
+        Calculates the forward unit vector of the drone based on its orientation.
+
+        :return: The forward unit vector of the drone.
+        :rtype: np.ndarray
+        """
+        rotation_matrix = self._body.xmat.reshape(3, 3)
+        local_y_direction = np.array([0, 1, 0])
+        transformed_vector = rotation_matrix @ local_y_direction
+        
+        unit_vector = transformed_vector / np.linalg.norm(transformed_vector)
+        return unit_vector
     
     @property
     def in_bounds(self) -> bool:
@@ -716,6 +731,22 @@ class BaseDrone(ABC):
 
         Returns:
             Dict[str, float]: A dictionary of metric names and their corresponding values.
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def aimed_at(self, drones: List[Tuple[BaseDrone, float]]):
+        """
+        Handles the event where the drone is aimed at by another drone. This method should define the logic for updating
+        the drone's state or the simulation environment based on the event.
+        """
+        raise NotImplementedError
+    
+    @abstractmethod
+    def aiming_at(self, drones: List[Tuple[BaseDrone, float]]):
+        """
+        Handles the event where the drone is aiming at another drone. This method should define the logic for updating
+        the drone's state or the simulation environment based on the event.
         """
         raise NotImplementedError
     
