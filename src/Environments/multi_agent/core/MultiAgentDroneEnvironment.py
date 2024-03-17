@@ -294,7 +294,9 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         """
         self.i = 0
         self.reset_model()
-        return self.observation(False), self.info
+        observation = self.observation(render=self.n_images > 0 and self.i % self.render_every == 0)
+        info = self.info
+        return observation, info
     
     def reset_model(self):
         """
@@ -365,9 +367,14 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         for drone in self.drones:
             drone.aiming_at(drones_aiming_at[drone])
             drone.aimed_at(drones_aimed_at[drone])
+            
+        observation = self.observation(render=self.n_images > 0 and self.i % self.render_every == 0)
+        reward = self.reward
+        truncated = self.truncated
+        done = self.done
+        info = self.info
         
-        return (self.observation(render=self.n_images > 0 and self.i % self.render_every == 0),
-                self.reward, self.truncated, self.done, self.info)
+        return observation, reward, truncated, done, info
     
     def drone_aim(self) -> Tuple[Dict[BaseDrone, List[Tuple[BaseDrone, float]]],
                                  Dict[BaseDrone, List[Tuple[BaseDrone, float]]]]:

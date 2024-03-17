@@ -75,7 +75,7 @@ class Bullet:
         
         # Initialize the bullet's starting position
         self.starting_position = self.body_free_joint.qpos.copy()
-        
+    
     @property
     def is_flying(self) -> bool:
         """
@@ -364,13 +364,13 @@ class BaseDrone(ABC):
         # Create the image arrays lazily if they don't exist yet
         if self._image_1 is None:
             if self.depth_render:
-                self._image_1 = np.ndarray((self.height, self.width), dtype=np.uint8)
+                self._image_1 = np.ndarray((self.height, self.width), dtype=np.float32)
             else:
                 self._image_1 = np.ndarray((self.height, self.width, 3), dtype=np.uint8)
         
         if self.n_images == 2 and self._image_2 is None:
             if self.depth_render:
-                self._image_2 = np.ndarray((self.height, self.width), dtype=np.uint8)
+                self._image_2 = np.ndarray((self.height, self.width), dtype=np.float32)
             else:
                 self._image_2 = np.ndarray((self.height, self.width, 3), dtype=np.uint8)
         
@@ -582,21 +582,39 @@ class BaseDrone(ABC):
         :rtype: Dict
         """
         obs_space = {
-            "position": Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
-            "velocity": Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
-            "acceleration": Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
-            "orientation": Box(low=-1, high=1, shape=(4,), dtype=np.float32),
-            "angular_velocity": Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32),
-            "frame_quaternion": Box(low=-1, high=1, shape=(4,), dtype=np.float32),
+            "position":
+                Box(low=-np.inf, high=np.inf, shape=self.position.shape, dtype=self.position.dtype),
+            "velocity":
+                Box(low=-np.inf, high=np.inf, shape=self.velocity.shape, dtype=self.velocity.dtype),
+            "acceleration":
+                Box(low=-np.inf, high=np.inf, shape=self.acceleration.shape, dtype=self.acceleration.dtype),
+            "orientation":
+                Box(low=-1, high=1, shape=self.orientation.shape, dtype=self.orientation.dtype),
+            "angular_velocity":
+                Box(low=-np.inf, high=np.inf, shape=self.angular_velocity.shape, dtype=self.angular_velocity.dtype),
+            "frame_quaternion":
+                Box(low=-1, high=1, shape=self.frame_quaternion.shape, dtype=self.frame_quaternion.dtype)
         }
         if self.n_images >= 1:
-            obs_space["image_1"] = Box(low=0, high=255,
-                                       shape=(self.height, self.width, 3 if not self.depth_render else 1),
-                                       dtype=np.uint8)
+            sample_render = self.images
+            if self.depth_render:
+                obs_space["image"] = Box(low=0, high=1, shape=(sample_render.shape[0], sample_render.shape[1]),
+                                         dtype=sample_render.dtype)
+            else:
+                obs_space["image"] = Box(low=0, high=255, shape=(sample_render.shape[0], sample_render.shape[1], 3),
+                                         dtype=sample_render.dtype)
         if self.n_images == 2:
-            obs_space["image_2"] = Box(low=0, high=255,
-                                       shape=(self.height, self.width, 3 if not self.depth_render else 1),
-                                       dtype=np.uint8)
+            sample_render = self.images
+            if self.depth_render:
+                obs_space["images"] = (Box(low=0, high=1, shape=(self.height, self.width),
+                                           dtype=sample_render[0].dtype),
+                                       Box(low=0, high=1, shape=(self.height, self.width),
+                                           dtype=sample_render[1].dtype))
+            else:
+                obs_space["images"] = (Box(low=0, high=255, shape=(self.height, self.width, 3),
+                                           dtype=sample_render[0].dtype),
+                                       Box(low=0, high=255, shape=(self.height, self.width, 3),
+                                           dtype=sample_render[1].dtype))
         return SpaceDict(obs_space)
     
     def act(self, action: EnvActionType):
@@ -629,6 +647,7 @@ class BaseDrone(ABC):
             "motor": Box(low=low, high=high, shape=(4,), dtype=np.float32),
             "shoot": MultiBinary(n=1)
         })
+    
     # endregion
     
     # region Abstract Methods
@@ -697,7 +716,7 @@ class BaseDrone(ABC):
         is reset at the beginning of an episode or after finishing a task. Meant for subclass-specific parameters.
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def truncated(self) -> bool:
@@ -709,7 +728,7 @@ class BaseDrone(ABC):
             bool: True if the episode should be truncated, False otherwise.
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def done(self) -> bool:
@@ -721,7 +740,7 @@ class BaseDrone(ABC):
             bool: True if the episode is done, False otherwise.
         """
         raise NotImplementedError
-
+    
     @property
     @abstractmethod
     def info(self) -> Dict[str, float]:
