@@ -53,8 +53,8 @@
     <motor name="drone{{index}}_motor4" site="drone{{index}}_prop4_thrust" gear="0 0 10 0 0 1"/>
   </actuator>
   <sensor>
-    <accelerometer name="drone{{index}}_imu_accel" site="drone{{index}}_imu" noise="0.01"/>
-    <gyro name="drone{{index}}_imu_gyro" site="drone{{index}}_imu" noise="0.005"/>
+    <accelerometer name="drone{{index}}_imu_accel" site="drone{{index}}_imu" noise="0.01" cutoff="10"/>
+    <gyro name="drone{{index}}_imu_gyro" site="drone{{index}}_imu" noise="0.005" cutoff="10"/>
     <framequat name="drone{{index}}_imu_orientation" objtype="body" objname="drone{{index}}"/>
   </sensor>
 </mujoco>

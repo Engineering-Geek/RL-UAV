@@ -79,7 +79,7 @@ from ray.rllib.env import MultiAgentEnv
 from ray.rllib.env.multi_agent_env import AgentID
 from ray.rllib.utils.typing import MultiAgentDict
 
-from Environments.multi_agent.core.BaseDrone import BaseDrone, Bullet
+from src.Environments.multi_agent.core.BaseDrone import BaseDrone, Bullet
 from src.utils.multiagent_model_generator import save_multiagent_model
 
 
@@ -149,7 +149,8 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         "render_fps": 500
     }
     
-    def __init__(self, n_agents: int, n_images: int, depth_render: bool, Drone: Type[BaseDrone], **kwargs) -> None:
+    def __init__(self, n_agents: int, n_images: int, depth_render: bool, Drone: Type[BaseDrone],
+                 map_bounds: np.ndarray, **kwargs) -> None:
         """
         Initializes a multi-agent environment tailored for drone simulations, using the MuJoCo physics engine.
         This environment supports multiple drones, each with capabilities for shooting and capturing images.
@@ -159,6 +160,8 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
                              observation space of each drone.
         :param bool depth_render: Determines if the drones should capture depth images (True) or RGB images (False).
         :param Type[BaseDrone] Drone: The class type for the drones to be instantiated in the environment.
+        :param np.ndarray map_bounds: A 2x3 array specifying the min and max (x, y, z) coordinates of the
+                                      environment boundaries. Default is a large area around the origin.
         :keyword Sequence[np.ndarray] spawn_boxes: (Optional) A list of 2x3 NumPy arrays where each array specifies the
                                                     min and max (x, y, z) coordinates of the spawn box for each drone.
         :keyword Sequence[np.ndarray] spawn_angles: (Optional) A list of 2x3 NumPy arrays where each array specifies the
@@ -169,8 +172,6 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
                                the model is not saved.
         :keyword int max_spawn_velocity: (Optional) The maximum magnitude of the initial velocity that can be assigned
                                          to a drone. Default is 1.
-        :keyword np.ndarray map_bounds: (Optional) A 2x3 array specifying the min and max (x, y, z) coordinates of the
-                                         environment boundaries. Default is a large area around the origin.
         :keyword int fps: (Optional) The number of frames per second at which the simulation should run. This affects
                           the frequency at which the environment's state is rendered and updated. Default is 30.
         :keyword float dt: (Optional) The timestep duration for the simulation in seconds. Default is 0.01.
@@ -209,9 +210,12 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         ])
         # Setup simulation properties, such as timestep and rendering frequency.
         self._setup_simulation_properties(**kwargs)
+        self.drone_positions: Dict[AgentID, np.ndarray] = {i: np.random.uniform(spawn_boxes[i][0], spawn_boxes[i][1])
+                                                           for i in range(n_agents)}
         # Instantiate and configure each drone agent within the environment.
         self.drones = [self._create_drone(Drone, i, agent_id, n_images, depth_render, spawn_boxes, spawn_angles,
-                                          **kwargs) for i, agent_id in enumerate(range(n_agents))]
+                                          map_bounds, **kwargs) for i, agent_id in enumerate(range(n_agents))]
+        self.drone_positions: Dict[AgentID, np.ndarray] = {drone.agent_id: drone.position for drone in self.drones}
         self.observation_space: SpaceDict[AgentID, Space[ObsType]] = SpaceDict({
             drone.agent_id: drone.observation_space for drone in self.drones})
         self.action_space: SpaceDict[AgentID, Space[ObsType]] = SpaceDict({
@@ -240,28 +244,29 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         
         MultiAgentEnv.__init__(self)
     
-    def _create_drone(self, drone_class: Type[BaseDrone], index: int, agent_id: int,
+    def _create_drone(self, DroneClass: Type[BaseDrone], index: int, agent_id: int,
                       n_images: int, depth_render: bool, spawn_boxes: Sequence[np.ndarray],
-                      spawn_angles: Sequence[np.ndarray], **kwargs) -> BaseDrone:
+                      spawn_angles: Sequence[np.ndarray], map_bounds: np.ndarray, **kwargs) -> BaseDrone:
         """
         Creates a drone object with specified parameters.
 
-        :param drone_class: The class type for the drone to be instantiated.
+        :param DroneClass: The class type for the drone to be instantiated.
         :param index: Index of the drone in the environment.
         :param agent_id: Unique identifier for the agent.
         :param n_images: Number of images the drone captures in each step.
         :param depth_render: Specifies if the drone captures depth images.
         :param spawn_boxes: Bounding boxes for drone spawning locations.
         :param spawn_angles: Initial orientation angle ranges for drones.
+        :param map_bounds: The boundaries of the simulation space.
         :param kwargs: Additional arguments for drone creation.
         :return: An instance of the Drone class.
         """
-        return drone_class(model=self.model, data=self.data, renderer=self.mujoco_renderer,
-                           n_images=n_images, depth_render=depth_render, index=index + 1, agent_id=agent_id,
-                           spawn_box=spawn_boxes[index], max_spawn_velocity=kwargs.get('max_spawn_velocity', 1),
-                           spawn_angle_range=spawn_angles[index], rng=kwargs.get('rng', default_rng()),
-                           map_bounds=kwargs.get('map_bounds', np.array([[-100, 100], [-100, 100], [0, 100]])),
-                           bullet_max_velocity=kwargs.get('bullet_max_velocity', 50), max_time=self.max_time)
+        return DroneClass(model=self.model, data=self.data, renderer=self.mujoco_renderer,
+                          n_images=n_images, depth_render=depth_render, index=index + 1, agent_id=agent_id,
+                          spawn_box=spawn_boxes[index], max_spawn_velocity=kwargs.get('max_spawn_velocity', 1),
+                          spawn_angle_range=spawn_angles[index], rng=kwargs.get('rng', default_rng()),
+                          map_bounds=map_bounds, bullet_max_velocity=kwargs.get('bullet_max_velocity', 50),
+                          max_time=self.max_time, drone_positions=self.drone_positions)
     
     def _setup_simulation_properties(self, **kwargs):
         """
@@ -367,7 +372,7 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         for drone in self.drones:
             drone.aiming_at(drones_aiming_at[drone])
             drone.aimed_at(drones_aimed_at[drone])
-            
+        
         observation = self.observation(render=self.n_images > 0 and self.i % self.render_every == 0)
         reward = self.reward
         truncated = self.truncated
@@ -377,7 +382,7 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
         return observation, reward, truncated, done, info
     
     def drone_aim(self) -> Tuple[Dict[BaseDrone, List[Tuple[BaseDrone, float]]],
-                                 Dict[BaseDrone, List[Tuple[BaseDrone, float]]]]:
+    Dict[BaseDrone, List[Tuple[BaseDrone, float]]]]:
         """
         Determines the visibility and angular relationship between drones in the simulation. For each pair of drones,
         it calculates the angle between the direction one drone is facing and the line of sight to the other drone.
@@ -417,12 +422,12 @@ class MultiAgentDroneEnvironment(MujocoEnv, EzPickle, MultiAgentEnv):
                     aiming_drone_pos = positions[aiming_drone]
                     aiming_drone_dir = directions[aiming_drone]
                     aimed_at_drone_pos = positions[aimed_at_drone]
-
+                    
                     drone_to_drone_vector = aimed_at_drone_pos - aiming_drone_pos
                     drone_to_drone_vector /= np.linalg.norm(drone_to_drone_vector)
-
+                    
                     theta = np.arccos(np.clip(np.dot(aiming_drone_dir, drone_to_drone_vector), -1.0, 1.0))
-
+                    
                     # Update both drones' records in a single pass
                     drones_aiming_at[aiming_drone].append((aimed_at_drone, theta))
                     drones_aimed_at[aimed_at_drone].append((aiming_drone, theta))

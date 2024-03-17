@@ -119,13 +119,8 @@ class Bullet:
         Returns:
             bool: True if the bullet is out of bounds, otherwise False.
         """
-        x_bounds, y_bounds, z_bounds = self.parent.map_bounds
-        if (x_bounds[0] <= self.bullet_body_data.xpos[0] <= x_bounds[1] and
-                y_bounds[0] <= self.bullet_body_data.xpos[1] <= y_bounds[1] and
-                z_bounds[0] <= self.bullet_body_data.xpos[2] <= z_bounds[1]):
-            return True
-        else:
-            return False
+        lower_bounds, upper_bounds = self.parent.map_bounds
+        return np.all(lower_bounds <= self.bullet_body_data.xpos) and np.all(self.bullet_body_data.xpos <= upper_bounds)
     
     @property
     def geom_id(self) -> int:
@@ -216,7 +211,8 @@ class BaseDrone(ABC):
                  depth_render: bool, index: int, agent_id: AgentID, spawn_box: np.ndarray, max_spawn_velocity: float,
                  spawn_angle_range: np.ndarray, map_bounds: np.ndarray, rng: Generator = default_rng(),
                  bullet_max_velocity: float = 50, height: int = 32, width: int = 32,
-                 fire_threshold: float = 0.9, max_time: float = 30) -> None:
+                 fire_threshold: float = 0.9, max_time: float = 30, drone_positions: Dict[AgentID, np.ndarray] = None
+                 ) -> None:
         """
         Initializes a BaseDrone instance with the specified parameters,
             setting up its simulation environment and attributes.
@@ -286,6 +282,9 @@ class BaseDrone(ABC):
         
         :param max_time: The maximum time for an episode (in seconds).
         :type max_time: float
+        
+        :param drone_positions: A dictionary containing the positions of all drones in the environment.
+        :type drone_positions: Dict[AgentID, np.ndarray]
 
         This method sets up the drone with the specified parameters, initializing its position, orientation, and other
         properties based on the provided values. It prepares the drone for interacting with its environment and executing
@@ -293,7 +292,6 @@ class BaseDrone(ABC):
         """
         
         # Basic drone attributes
-        self.just_shot = False
         self.model = model
         self.data = data
         self.index = index
@@ -349,6 +347,7 @@ class BaseDrone(ABC):
         
         # Store the initial orientation for potential reset purposes
         self.initial_quat = self.frame_quaternion
+        self.drone_positions = drone_positions
     
     # region Properties
     @property
@@ -400,8 +399,41 @@ class BaseDrone(ABC):
         local_y_direction = np.array([0, 1, 0])
         transformed_vector = rotation_matrix @ local_y_direction
         
-        unit_vector = transformed_vector / np.linalg.norm(transformed_vector)
+        unit_vector = transformed_vector / np.clip(np.linalg.norm(transformed_vector), 1e-6, None)
         return unit_vector
+    
+    @property
+    def vector_to_other_drones(self) -> Dict[AgentID, np.ndarray]:
+        """
+        Calculates the vector from the drone to other drones in the environment.
+
+        :return: A dictionary containing the vectors from the drone to other drones in the environment.
+        :rtype: Dict[AgentID, np.ndarray]
+        """
+        return {agent_id: self.drone_positions[agent_id] - self.position for agent_id in self.drone_positions}
+    
+    @property
+    def distance_to_other_drones(self) -> Dict[AgentID, float]:
+        """
+        Calculates the distance from the drone to other drones in the environment.
+
+        :return: A dictionary containing the distances from the drone to other drones in the environment.
+        :rtype: Dict[AgentID, float]
+        """
+        return {agent_id: np.linalg.norm(vector) for agent_id, vector in self.vector_to_other_drones.items()}
+    
+    @property
+    def unit_vector_to_other_drones(self) -> Dict[AgentID, np.ndarray]:
+        """
+        Calculates the unit vectors from the drone to other drones in the environment.
+
+        :return: A dictionary containing the unit vectors from the drone to other drones in the environment.
+        :rtype: Dict[AgentID, np.ndarray]
+        """
+        unit_vectors = {}
+        for agent_id, vector in self.vector_to_other_drones.items():
+            unit_vectors[agent_id] = vector / self.distance_to_other_drones[agent_id]
+        return unit_vectors
     
     @property
     def in_bounds(self) -> bool:
@@ -411,7 +443,8 @@ class BaseDrone(ABC):
         :return: True if the drone's current position is within the map boundaries, False otherwise.
         :rtype: bool
         """
-        return all(self.map_bounds[:, 0] <= self.position) and all(self.position <= self.map_bounds[:, 1])
+        lower_bounds, upper_bounds = self.map_bounds
+        return np.all(lower_bounds <= self.position) and np.all(self.position <= upper_bounds)
     
     @property
     def position(self) -> np.ndarray:
@@ -558,19 +591,7 @@ class BaseDrone(ABC):
             EnvObsType: A structured observation of the drone's current state, which may include numerical data
                         and images.
         """
-        observations = {
-            "position": self.position,
-            "velocity": self.velocity,
-            "acceleration": self.acceleration,
-            "orientation": self.orientation,
-            "angular_velocity": self.angular_velocity,
-            "frame_quaternion": self.frame_quaternion
-        }
-        if self.n_images == 1:
-            observations["image"] = self.images if render else self._image_1
-        elif self.n_images == 2:
-            observations["images"] = self.images if render else (self._image_1, self._image_2)
-        return observations
+        raise NotImplementedError
     
     @property
     def observation_space(self) -> EnvObsType:
@@ -581,42 +602,9 @@ class BaseDrone(ABC):
         :return: A dictionary specifying the observation space for the drone.
         :rtype: Dict
         """
-        obs_space = {
-            "position":
-                Box(low=-np.inf, high=np.inf, shape=self.position.shape, dtype=self.position.dtype),
-            "velocity":
-                Box(low=-np.inf, high=np.inf, shape=self.velocity.shape, dtype=self.velocity.dtype),
-            "acceleration":
-                Box(low=-np.inf, high=np.inf, shape=self.acceleration.shape, dtype=self.acceleration.dtype),
-            "orientation":
-                Box(low=-1, high=1, shape=self.orientation.shape, dtype=self.orientation.dtype),
-            "angular_velocity":
-                Box(low=-np.inf, high=np.inf, shape=self.angular_velocity.shape, dtype=self.angular_velocity.dtype),
-            "frame_quaternion":
-                Box(low=-1, high=1, shape=self.frame_quaternion.shape, dtype=self.frame_quaternion.dtype)
-        }
-        if self.n_images >= 1:
-            sample_render = self.images
-            if self.depth_render:
-                obs_space["image"] = Box(low=0, high=1, shape=(sample_render.shape[0], sample_render.shape[1]),
-                                         dtype=sample_render.dtype)
-            else:
-                obs_space["image"] = Box(low=0, high=255, shape=(sample_render.shape[0], sample_render.shape[1], 3),
-                                         dtype=sample_render.dtype)
-        if self.n_images == 2:
-            sample_render = self.images
-            if self.depth_render:
-                obs_space["images"] = (Box(low=0, high=1, shape=(self.height, self.width),
-                                           dtype=sample_render[0].dtype),
-                                       Box(low=0, high=1, shape=(self.height, self.width),
-                                           dtype=sample_render[1].dtype))
-            else:
-                obs_space["images"] = (Box(low=0, high=255, shape=(self.height, self.width, 3),
-                                           dtype=sample_render[0].dtype),
-                                       Box(low=0, high=255, shape=(self.height, self.width, 3),
-                                           dtype=sample_render[1].dtype))
-        return SpaceDict(obs_space)
+        raise NotImplementedError
     
+    @abstractmethod
     def act(self, action: EnvActionType):
         """
         Applies an action to the drone, influencing its motors and potentially other actuators like firing mechanisms.
@@ -625,14 +613,7 @@ class BaseDrone(ABC):
         Parameters:
             action (EnvActionType): A structured action that includes control signals for the drone's actuators.
         """
-        shoot = action["shoot"][0]
-        shoot = shoot > self.fire_threshold
-        motor_controls = action["motor"]
-        for actuator, control in zip(self._actuators, motor_controls):
-            actuator.ctrl = control
-        if shoot and not self.bullet.is_flying:
-            self.bullet.shoot()
-            self.just_shot = True
+        raise NotImplementedError
     
     @property
     def action_space(self) -> EnvActionType:
@@ -642,11 +623,7 @@ class BaseDrone(ABC):
         :return: A dictionary specifying the action space for the drone.
         :rtype: Dict
         """
-        low, high = self.model.actuator_ctrlrange.T[:, 0]
-        return SpaceDict({
-            "motor": Box(low=low, high=high, shape=(4,), dtype=np.float32),
-            "shoot": MultiBinary(n=1)
-        })
+        raise NotImplementedError
     
     # endregion
     
