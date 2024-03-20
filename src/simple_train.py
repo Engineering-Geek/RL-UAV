@@ -1,39 +1,47 @@
+import os
+import ray
+from ray import tune
+from ray.rllib.algorithms.ppo import PPO, PPOConfig
+from gym_drone.environments.battle_royal import LidarBattleRoyal
 import numpy as np
 
-from gym_drone import LidarBattleRoyal
-from mujoco import viewer
+# Initialize Ray
+ray.init(ignore_reinit_error=True)
 
-from gym_drone import LidarBattleRoyal
-from time import sleep, time
-from tqdm import tqdm
+# Define the environment
+env_config = {
+    "render_mode": None,
+    "world_bounds": np.array([[-10, -10, -0.1], [10, 10, 5]]),
+    "respawn_box": np.array([[-5, -5, 0.5], [5, 5, 5]]),
+    "num_agents": 5,
+    "n_phi": 16,
+    "n_theta": 16,
+    "ray_max_distance": 10,
+    "kwargs": {
+        "noise": 0.005,
+    }
+}
 
-spawn_box = np.array([[-5, -5, 0.5], [5, 5, 5]])
-world_bounds = np.array([[-10, -10, -0.1], [10, 10, 5]])
-env = LidarBattleRoyal(render_mode="human", world_bounds=world_bounds,
-                       respawn_box=spawn_box, num_agents=5, n_phi=16, n_theta=16, ray_max_distance=10,)
+# Configure and initialize the PPO algorithm
+config = PPOConfig() \
+    .environment(env=LidarBattleRoyal, env_config=env_config) \
+    .framework("torch") \
+    .rollouts(num_rollout_workers=1, num_envs_per_worker=1) \
+    .training(gamma=0.99, lr=5e-5, train_batch_size=5000,
+              model={"fcnet_hiddens": [256, 256], "fcnet_activation": "relu"}) \
+    .resources(num_gpus=1 if ray.cluster_resources().get("GPU", 0) > 0 else 0) \
+    .evaluation(evaluation_interval=10, evaluation_duration=10)
 
+ppo_algo = config.build()
 
-observation, log = env.reset()
+# Training loop
+for i in range(100):
+    print(f"Training iteration: {i}")
+    result = ppo_algo.train()
+    print(f"Episode reward mean: {result['episode_reward_mean']}")
+    
+    if i % 10 == 0:
+        checkpoint = ppo_algo.save()
+        print(f"Checkpoint saved at {checkpoint}")
 
-for i in tqdm(range(100000)):
-    action = env.action_space.sample()
-    observation, reward, trunc, done, info = env.step(action)
-    shot_drone = any([info[agent_id]["shot_drone"] for agent_id in range(env.num_agents)])
-    hit_floor = any([info[agent_id]["hit_floor"] for agent_id in range(env.num_agents)])
-    env.render()
-    if shot_drone:
-        print("Drone shot!")
-        env.render()
-    if hit_floor:
-        print("Drone hit the floor!")
-        env.render()
-env.close()
-
-
-# model = env.model.__copy__()
-# data = env.data.__copy__()
-# env.close()
-# viewer.launch(model, data)
-
-
-
+ray.shutdown()
