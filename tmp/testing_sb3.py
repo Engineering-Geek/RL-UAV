@@ -1,5 +1,5 @@
 from ray.rllib.algorithms.ppo import PPO, PPOConfig, PPOTorchPolicy
-from src.Environments.multi_agent import MultiAgentDroneEnvironment, SimpleShooter
+from tmp.Environments import MultiAgentDroneEnvironment, SimpleShooter
 
 env = MultiAgentDroneEnvironment(
     n_agents=2,

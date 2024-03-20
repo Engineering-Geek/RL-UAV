@@ -1,3 +1,3 @@
-from src.Environments.multi_agent import SimpleDrone, MultiAgentDroneEnvironment
+from tmp.Environments import SimpleDrone, MultiAgentDroneEnvironment
 from ray import tune, train
 

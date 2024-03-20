@@ -6,7 +6,7 @@ from numpy import cos
 from ray.rllib.utils.typing import EnvObsType, EnvActionType
 from gymnasium.spaces import Box, MultiBinary, Tuple as TupleSpace
 
-from src.Environments.multi_agent import MultiAgentDroneEnvironment, BaseDrone
+from tmp.Environments import MultiAgentDroneEnvironment, BaseDrone
 from src.utils.simulation_metrics import time_ratio
 
 

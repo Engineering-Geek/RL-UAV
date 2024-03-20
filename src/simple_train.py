@@ -1,39 +1,39 @@
-import os
+import numpy as np
 
-import ray
+from gym_drone import LidarBattleRoyal
+from mujoco import viewer
 
-from src.register import register
-from ray.rllib.algorithms.ppo import PPO, PPOTorchPolicy
-from ray import air, tune
-from ray.rllib.algorithms.ppo import PPOConfig
-from ray.rllib.examples.env.multi_agent import MultiAgentCartPole
-import random
+from gym_drone import LidarBattleRoyal
+from time import sleep, time
+from tqdm import tqdm
 
-
-config = PPOConfig()
-config = config.training(gamma=0.9, lr=0.01, kl_coeff=0.3, train_batch_size=128)
-config = config.resources(num_gpus=0)
-config = config.rollouts(num_rollout_workers=1)
-config = config.environment(MultiAgentCartPole,
-                            env_config={"n_agents": 2, "n_images": 1, "frame_skip": 1, "depth_render": True})
-config = config.multi_agent(
-    policies={
-        "policy_0": (PPOTorchPolicy, MultiAgentCartPole.observation_space, MultiAgentCartPole.action_space, {}),
-        "policy_1": (PPOTorchPolicy, MultiAgentCartPole.observation_space, MultiAgentCartPole.action_space, {})
-    },
-    policy_mapping_fn=lambda agent_id: f"policy_{random.randint(0, 1)}"
-)
-config = config.resources(num_gpus=1)
+spawn_box = np.array([[-5, -5, 0.5], [5, 5, 5]])
+world_bounds = np.array([[-10, -10, -0.1], [10, 10, 5]])
+env = LidarBattleRoyal(render_mode="human", world_bounds=world_bounds,
+                       respawn_box=spawn_box, num_agents=5, n_phi=16, n_theta=16, ray_max_distance=10,)
 
 
-stop = {
-    "timesteps_total": 10000,
-}
-results = tune.Tuner(
-    "PPO",
-    param_space=config.to_dict(),
-    run_config=air.RunConfig(stop=stop, verbose=1),
-).fit()
+observation, log = env.reset()
 
-ray.shutdown()
+for i in tqdm(range(100000)):
+    action = env.action_space.sample()
+    observation, reward, trunc, done, info = env.step(action)
+    shot_drone = any([info[agent_id]["shot_drone"] for agent_id in range(env.num_agents)])
+    hit_floor = any([info[agent_id]["hit_floor"] for agent_id in range(env.num_agents)])
+    env.render()
+    if shot_drone:
+        print("Drone shot!")
+        env.render()
+    if hit_floor:
+        print("Drone hit the floor!")
+        env.render()
+env.close()
+
+
+# model = env.model.__copy__()
+# data = env.data.__copy__()
+# env.close()
+# viewer.launch(model, data)
+
+
 

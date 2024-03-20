@@ -79,7 +79,7 @@ from ray.rllib.env import MultiAgentEnv
 from ray.rllib.env.multi_agent_env import AgentID
 from ray.rllib.utils.typing import MultiAgentDict
 
-from src.Environments.multi_agent.core.BaseDrone import BaseDrone, Bullet
+from tmp.Environments import BaseDrone, Bullet
 from src.utils.multiagent_model_generator import save_multiagent_model
 
 

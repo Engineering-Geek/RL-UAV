@@ -1,6 +1,6 @@
 from typing import Type
 from ray.tune.registry import register_env
-from src.Environments.multi_agent import SimpleShooter, MultiAgentDroneEnvironment, BaseDrone
+from tmp.Environments import SimpleShooter, MultiAgentDroneEnvironment, BaseDrone
 from yaml import safe_load
 
 

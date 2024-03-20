@@ -3,7 +3,7 @@ from time import time, sleep
 import numpy as np
 from mujoco import viewer
 
-from src.Environments.multi_agent import MultiAgentDroneEnvironment
+from tmp.Environments import MultiAgentDroneEnvironment
 from src.utils.multiagent_model_generator import multiagent_model
 from ray.rllib.env.multi_agent_env import MultiAgentDict
 
