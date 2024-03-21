@@ -1,0 +1,154 @@
+<robot name="onshape">
+<link name="frame">
+<visual>
+<origin xyz="0 0 0" rpy="0 -0 0" />
+<geometry>
+<mesh filename="package:///frame.stl"/>
+</geometry>
+<material name="frame_material">
+<color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 0" rpy="0 -0 0" />
+<geometry>
+<mesh filename="package:///frame.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="-0.0013327326490887780527 -1.9885445094919197627e-11 -0.0038335905990413421396" rpy="0 0 0"/>
+<mass value="0.30997922518783177503" />
+<inertia ixx="0.0004727465534839888012" ixy="1.2862828933409759007e-13"  ixz="-6.678657900680426929e-06" iyy="0.00054311890090477719754" iyz="-1.6924259069247131096e-13" izz="0.00095080462472768817288" />
+</inertial>
+</link>
+
+<link name="cwprop">
+<visual>
+<origin xyz="0 0 -0.0050000000000000001041" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///cwprop.stl"/>
+</geometry>
+<material name="cwprop_material">
+<color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 -0.0050000000000000001041" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///cwprop.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="1.2208020385002961994e-11 -7.2570424274441132581e-12 -0.005805260023183936996" rpy="0 0 0"/>
+<mass value="0.0045608789483441878818" />
+<inertia ixx="6.9169975866069136554e-07" ixy="-1.2324778773249908624e-16"  ixz="-2.1557298531112225469e-16" iyy="6.9169975836743468903e-07" iyz="1.4372788921910782819e-16" izz="1.3228943330621649696e-06" />
+</inertial>
+</link>
+
+<joint name="cw_back" type="revolute">
+<origin xyz="-0.049999999999999968081 -0.05000000000000003747 -0.010000000000000000208" rpy="3.141592653589793116 -0 0" />
+<parent link="frame" />
+<child link="cwprop" />
+<axis xyz="0 0 1"/>
+<limit effort="1" velocity="20" />
+<joint_properties friction="0.0"/>
+</joint>
+
+<link name="cwprop_2">
+<visual>
+<origin xyz="0 0 -0.0050000000000000001041" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///cwprop.stl"/>
+</geometry>
+<material name="cwprop_material">
+<color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 -0.0050000000000000001041" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///cwprop.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="1.2208020385002961994e-11 -7.2570424274441132581e-12 -0.005805260023183936996" rpy="0 0 0"/>
+<mass value="0.0045608789483441878818" />
+<inertia ixx="6.9169975866069136554e-07" ixy="-1.2324778773249908624e-16"  ixz="-2.1557298531112225469e-16" iyy="6.9169975836743468903e-07" iyz="1.4372788921910782819e-16" izz="1.3228943330621649696e-06" />
+</inertial>
+</link>
+
+<joint name="cw_front" type="revolute">
+<origin xyz="0.049999999999999988898 0.050000000000000016653 -0.010000000000000000208" rpy="3.141592653589793116 -0 0" />
+<parent link="frame" />
+<child link="cwprop_2" />
+<axis xyz="0 0 1"/>
+<limit effort="1" velocity="20" />
+<joint_properties friction="0.0"/>
+</joint>
+
+<link name="ccwprop">
+<visual>
+<origin xyz="0 0 -0.0050000000000000001041" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///ccwprop.stl"/>
+</geometry>
+<material name="ccwprop_material">
+<color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 -0.0050000000000000001041" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///ccwprop.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="-5.3871030962097108788e-10 1.09014836471122552e-09 -0.0058054487327012741643" rpy="0 0 0"/>
+<mass value="0.0045605471506329573611" />
+<inertia ixx="6.9167056821239535913e-07" ixy="9.782129861396037959e-15"  ixz="9.4821324385789416963e-15" iyy="6.9167054890854583143e-07" iyz="-1.9438534453170723002e-14" izz="1.3228368598726335057e-06" />
+</inertial>
+</link>
+
+<joint name="ccw_back" type="revolute">
+<origin xyz="-0.050000000000000030531 0.050000000000000016653 -0.010000000000000000208" rpy="3.141592653589793116 -0 0" />
+<parent link="frame" />
+<child link="ccwprop" />
+<axis xyz="0 0 1"/>
+<limit effort="1" velocity="20" />
+<joint_properties friction="0.0"/>
+</joint>
+
+<link name="ccwprop_2">
+<visual>
+<origin xyz="0 0 -0.0050000000000000001041" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///ccwprop.stl"/>
+</geometry>
+<material name="ccwprop_material">
+<color rgba="0.61568627450980395466 0.81176470588235294379 0.92941176470588238168 1.0"/>
+</material>
+</visual>
+<collision>
+<origin xyz="0 0 -0.0050000000000000001041" rpy="3.141592653589793116 -0 0" />
+<geometry>
+<mesh filename="package:///ccwprop.stl"/>
+</geometry>
+</collision>
+<inertial>
+<origin xyz="-5.3871030962097108788e-10 1.09014836471122552e-09 -0.0058054487327012741643" rpy="0 0 0"/>
+<mass value="0.0045605471506329573611" />
+<inertia ixx="6.9167056821239535913e-07" ixy="9.782129861396037959e-15"  ixz="9.4821324385789416963e-15" iyy="6.9167054890854583143e-07" iyz="-1.9438534453170723002e-14" izz="1.3228368598726335057e-06" />
+</inertial>
+</link>
+
+<joint name="ccw_front" type="revolute">
+<origin xyz="0.050000000000000023592 -0.049999999999999981959 -0.010000000000000000208" rpy="3.141592653589793116 -0 0" />
+<parent link="frame" />
+<child link="ccwprop_2" />
+<axis xyz="0 0 1"/>
+<limit effort="1" velocity="20" />
+<joint_properties friction="0.0"/>
+</joint>
+
+
+</robot>

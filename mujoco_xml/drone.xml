@@ -1,0 +1,95 @@
+<mujoco model="mini-drone-a-{{index}}">
+  <!-- Compiler settings to automatically compute inertia from geometry and set mujoco_xml directory -->
+  <compiler inertiafromgeom="true" assetdir="../assets"/>
+
+  <!-- Simulation options including timestep, gravity, solver iterations, integration method, air density, and air viscosity -->
+  <option gravity="0 0 -9.81" iterations="50" integrator="Euler" density="1.225" viscosity="1.8e-5"/>
+
+  <!-- Asset definitions for drone components -->
+  <asset>
+    <!-- Mesh for the drone body -->
+    <mesh name="frame_{{index}}" file="frame.stl"/>
+    <!-- Mesh for clockwise rotating propellers -->
+    <mesh name="cwprop_{{index}}" file="cwprop.stl"/>
+    <!-- Mesh for counter-clockwise rotating propellers -->
+    <mesh name="ccwprop_{{index}}" file="ccwprop.stl"/>
+  </asset>
+
+  <!-- Default properties for joints, geometries, and motors -->
+  <default>
+    <!-- Joint properties: low damping to allow free rotation -->
+    <joint damping="0.01"/>
+    <!-- Geometric properties: friction, density, and collision margin -->
+    <geom friction="1 0.5 0.5" density="1000" margin="0.01"/>
+    <!-- Motor properties: control range -->
+    <motor ctrlrange="0.0 1.0"/>
+  </default>
+
+  <worldbody>
+    <body name="drone_{{index}}" pos="{{x}} {{y}} .25">
+      <!-- Free joint for models body to allow free movement in the environment -->
+      <freejoint name="drone_{{index}}_free_joint"/>
+      <inertial pos="0 0 0" mass="0.1"/>
+      <site name="drone_{{index}}_sensor_site" pos="0 0 0"/>
+      <geom name="drone_{{index}}_mesh" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="frame_{{index}}" contype="0" conaffinity="0"/>
+
+      <!-- Main collision box for the drone -->
+      <geom name="drone_{{index}}_collision_1" type="box" size="0.085 0.085 0.01" rgba="0 0 0 0.2" contype="1" conaffinity="1"/>
+      <!-- Additional collision box for the drone -->
+      <geom name="drone_{{index}}_collision_2" type="box" pos="0 0 -0.02" size="0.015 0.085 0.015" rgba="0 0 0 0.2" contype="1" conaffinity="1"/>
+
+      <!-- Propeller bodies and their visuals -->
+      <!-- Clockwise rotating propellers -->
+      <body name="front_right_prop_{{index}}" pos="0.05 -0.05 0">
+        <inertial pos="0 0 -0.00580526" quat="0.5 0.5 -0.5 0.5" mass="0.01"/>
+        <site name="front_right_prop_{{index}}" pos="0 0 -0.01"/>
+        <joint name="front_right_prop_{{index}}" pos="0 0 0" axis="0 0 1" limited="false"/>
+        <geom name="front_right_prop_{{index}}" pos="0 0 -0.005" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cwprop_{{index}}"/>
+      </body>
+      <body name="back_left_prop_{{index}}" pos="-0.05 0.05 0">
+        <inertial pos="0 0 -0.00580526" quat="0.5 0.5 -0.5 0.5" mass="0.01"/>
+        <site name="back_left_prop_{{index}}" pos="0 0 -0.01"/>
+        <joint name="back_left_prop_{{index}}" pos="0 0 0" axis="0 0 1" limited="false"/>
+        <geom name="back_left_front_{{index}}" pos="0 0 -0.005" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="cwprop_{{index}}"/>
+      </body>
+      <!-- Counter-clockwise rotating propellers -->
+      <body name="front_left_prop_{{index}}" pos="0.05 0.05 0">
+        <inertial pos="0 0 -0.00580545" quat="0.5 0.5 -0.5 0.5" mass="0.01"/>
+        <site name="front_left_prop_{{index}}" pos="0 0 -0.01"/>
+        <joint name="front_left_prop_{{index}}" pos="0 0 0" axis="0 0 1" limited="false"/>
+        <geom name="front_left_prop_{{index}}" pos="0 0 -0.005" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ccwprop_{{index}}"/>
+      </body>
+      <body name="back_right_prop_{{index}}" pos="-0.05 -0.05 0">
+        <inertial pos="0 0 -0.00580545" quat="0.5 0.5 -0.5 0.5" mass="0.01"/>
+        <site name="back_right_prop_{{index}}" pos="0 0 -0.01"/>
+        <joint name="back_right_prop_{{index}}" pos="0 0 0" axis="0 0 1" limited="false"/>
+        <geom name="back_right_prop_{{index}}" pos="0 0 -0.005" type="mesh" rgba="0.615686 0.811765 0.929412 1" mesh="ccwprop_{{index}}"/>
+      </body>
+
+      <site name="bullet_spawn_position_{{index}}" pos="0.08 0 -0.015" size="0.01" rgba="1 1 1 .2"/>
+
+      <!-- Cameras (2 stereo, 1 normal) -->
+      <camera name="camera{{index}}" pos="0.1 0 0" xyaxes="0 -1 0 0 0 1" fovy="60" mode="fixed"/>
+      <camera name="camera{{index}}_left" pos="0.1 0.025 0" xyaxes="0 -1 0 0 0 1" fovy="60" mode="fixed"/>
+      <camera name="camera{{index}}_right" pos="0.1 -0.025 0" xyaxes="0 -1 0 0 0 1" fovy="60" mode="fixed"/>
+    </body>
+    <body name="bullet_{{index}}" pos="0 0 0">
+      <freejoint name="bullet_{{index}}"/>
+      <geom name="bullet_{{index}}" type="sphere" size="0.01" rgba="0 0 0 0" contype="0" conaffinity="0"/>
+    </body>
+  </worldbody>
+
+  <!-- Actuator definitions for controlling drone propellers -->
+  <actuator>
+    <motor name="front_left_{{index}}" site="front_left_prop_{{index}}" ctrllimited="true" ctrlrange="0.0 1.0" gear="0 0 10 0 0 1"/>
+    <motor name="back_right_{{index}}" site="back_right_prop_{{index}}" ctrllimited="true" ctrlrange="0.0 1.0" gear="0 0 10 0 0 1"/>
+    <motor name="front_right_{{index}}" site="front_right_prop_{{index}}" ctrllimited="true" ctrlrange="0.0 1.0" gear="0 0 10 0 0 -1"/>
+    <motor name="back_left_{{index}}" site="back_left_prop_{{index}}" ctrllimited="true" ctrlrange="0.0 1.0" gear="0 0 10 0 0 -1"/>
+  </actuator>
+
+  <!-- Sensor definitions for the drone-->
+  <sensor>
+    <accelerometer name="accelerometer{{index}}" site="drone_{{index}}_sensor_site" noise="0.1" cutoff="10"/>
+    <gyro name="gyro{{index}}" site="drone_{{index}}_sensor_site" noise="0.1" cutoff="10"/>
+  </sensor>
+</mujoco>
