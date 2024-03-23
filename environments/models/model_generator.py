@@ -17,40 +17,31 @@ Functions
 This module is designed to be used in conjunction with MuJoCo simulations, particularly those involving multiple drones
 and target objects in a defined environment.
 """
-
 import numpy as np
 import os
-
+import tempfile
+import shutil
 from mujoco import MjModel
 
 
-def read_template_files() -> tuple:
-    """
-    Read the XML template files for the scene, drone, and target.
+def create_temp_directory():
+    return tempfile.mkdtemp()
 
-    Returns:
-        tuple: Containing the content of scene.xml, drone.xml, and target.xml respectively.
-    """
+
+def delete_temp_directory(dir_path):
+    shutil.rmtree(dir_path)
+
+
+def read_template_files():
     base_path = f"{os.path.dirname(__file__)}"
-    with open(f"{base_path}/scene.xml") as f:
+    with open(os.path.join(base_path, "scene.xml")) as f:
         scene_xml = f.read()
-    with open(f"{base_path}/drone.xml") as f:
+    with open(os.path.join(base_path, "drone.xml")) as f:
         drone_xml = f.read()
     return scene_xml, drone_xml
 
 
-def generate_drone_positions(num_agents: int, spacing: float, drone_height: float) -> np.ndarray:
-    """
-    Generate x, y, z positions for the agents evenly spaced in a circle.
-
-    Args:
-        num_agents (int): Number of agents.
-        spacing (float): Distance between each agent's center.
-        drone_height (float): Height at which drones are placed.
-
-    Returns:
-        np.ndarray: BaseDrone positions array.
-    """
+def generate_drone_positions(num_agents, spacing, drone_height):
     indices = np.arange(num_agents)
     radians = 2 * np.pi / num_agents
     length = spacing / np.sqrt(3)
@@ -62,22 +53,11 @@ def generate_drone_positions(num_agents: int, spacing: float, drone_height: floa
     return drone_positions
 
 
-def create_scene_xml(scene_xml: str, num_agents: int, map_bounds: np.ndarray, save_dir: str):
-    """
-    Create the XML for the scene and write it to a file.
-
-    Args:
-        scene_xml (str): Template XML for the scene.
-        num_agents (int): Number of agents (drones).
-        map_bounds (np.ndarray): World bounds for placing the fence.
-        save_dir (str): Directory to save the generated scene XML.
-    """
-    
+def create_scene_xml(scene_xml, num_agents, map_bounds, temp_dir):
     files = "\n"
-    
     for i in range(num_agents):
         files += f'\t<include file="drone{i}.xml"/>\n'
-        
+    
     scene_xml = scene_xml.replace("{{files}}", files)
     
     # Define the fence XML based on the world bounds
@@ -91,18 +71,18 @@ def create_scene_xml(scene_xml: str, num_agents: int, map_bounds: np.ndarray, sa
     fence_color = "1 0 0 1"  # RGBA color for the fence (red)
     
     # Left wall
-    fence_xml += f'<geom name="left_wall" type="box" size="{wall_thickness / 2} {(ymax - ymin) / 2} {wall_height / 2}" pos="{xmin - wall_thickness / 2} {(ymin + ymax) / 2} {wall_height / 2}" rgba="{fence_color}"/>\n'
+    fence_xml += f'\t<geom name="left_wall" type="box" size="{wall_thickness / 2} {(ymax - ymin) / 2} {wall_height / 2}" pos="{xmin - wall_thickness / 2} {(ymin + ymax) / 2} {wall_height / 2}" rgba="{fence_color}"/>\n'
     # Right wall
-    fence_xml += f'<geom name="right_wall" type="box" size="{wall_thickness / 2} {(ymax - ymin) / 2} {wall_height / 2}" pos="{xmax + wall_thickness / 2} {(ymin + ymax) / 2} {wall_height / 2}" rgba="{fence_color}"/>\n'
+    fence_xml += f'\t<geom name="right_wall" type="box" size="{wall_thickness / 2} {(ymax - ymin) / 2} {wall_height / 2}" pos="{xmax + wall_thickness / 2} {(ymin + ymax) / 2} {wall_height / 2}" rgba="{fence_color}"/>\n'
     # Bottom wall
-    fence_xml += f'<geom name="bottom_wall" type="box" size="{(xmax - xmin) / 2} {wall_thickness / 2} {wall_height / 2}" pos="{(xmin + xmax) / 2} {ymin - wall_thickness / 2} {wall_height / 2}" rgba="{fence_color}"/>\n'
+    fence_xml += f'\t<geom name="bottom_wall" type="box" size="{(xmax - xmin) / 2} {wall_thickness / 2} {wall_height / 2}" pos="{(xmin + xmax) / 2} {ymin - wall_thickness / 2} {wall_height / 2}" rgba="{fence_color}"/>\n'
     # Top wall
-    fence_xml += f'<geom name="top_wall" type="box" size="{(xmax - xmin) / 2} {wall_thickness / 2} {wall_height / 2}" pos="{(xmin + xmax) / 2} {ymax + wall_thickness / 2} {wall_height / 2}" rgba="{fence_color}"/>\n'
+    fence_xml += f'\t<geom name="top_wall" type="box" size="{(xmax - xmin) / 2} {wall_thickness / 2} {wall_height / 2}" pos="{(xmin + xmax) / 2} {ymax + wall_thickness / 2} {wall_height / 2}" rgba="{fence_color}"/>\n'
     
     # Replace the fence placeholder
     scene_xml = scene_xml.replace("{{fence}}", fence_xml)
     
-    with open(f"{save_dir}/scene.xml", "w") as f:
+    with open(os.path.join(temp_dir, "scene.xml"), "w") as f:
         f.write(scene_xml)
 
 
@@ -125,6 +105,15 @@ def create_agent_and_target_xml(drone_xml: str, drone_positions: np.ndarray, sav
             f.write(updated_drone_xml)
 
 
+def copy_assets_to_temp_dir(temp_dir):
+    base_path = f"{os.path.dirname(__file__)}"
+    assets_dir = os.path.join(base_path, "assets")
+    for asset in os.listdir(assets_dir):
+        full_asset_path = os.path.join(assets_dir, asset)
+        if os.path.isfile(full_asset_path):
+            shutil.copy(full_asset_path, temp_dir)
+
+
 def get_model(num_agents: int, spacing: float, drone_spawn_height: float, map_bounds: np.ndarray) -> MjModel:
     """
     Generate and save the scene, drones, and targets XML configuration for the simulation. Returns the MuJoCo model.
@@ -135,19 +124,14 @@ def get_model(num_agents: int, spacing: float, drone_spawn_height: float, map_bo
         drone_spawn_height (float): Height at which drones are placed.
         map_bounds (np.ndarray): 2x3 array with lower and upper bounds for target positions.
     """
-    scene_xml, drone_xml = read_template_files()
-    
-    save_dir = f"{os.path.dirname(__file__)}/generated"
-    
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
-    else:
-        for file in os.listdir(save_dir):
-            os.remove(os.path.join(save_dir, file))
-    
-    drone_positions = generate_drone_positions(num_agents, spacing, drone_spawn_height)
-    
-    create_scene_xml(scene_xml, num_agents, map_bounds, save_dir)
-    create_agent_and_target_xml(drone_xml, drone_positions, save_dir)
-    
-    return MjModel.from_xml_path(f"{save_dir}/scene.xml")
+    temp_dir = create_temp_directory()
+    try:
+        scene_xml, drone_xml = read_template_files()
+        drone_positions = generate_drone_positions(num_agents, spacing, drone_spawn_height)
+        create_scene_xml(scene_xml, num_agents, map_bounds, temp_dir)
+        create_agent_and_target_xml(drone_xml, drone_positions, temp_dir)
+        copy_assets_to_temp_dir(temp_dir)
+        model = MjModel.from_xml_path(os.path.join(temp_dir, "scene.xml"))
+    finally:
+        delete_temp_directory(temp_dir)
+    return model

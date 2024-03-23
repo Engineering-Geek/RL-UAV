@@ -1,5 +1,5 @@
 <mujoco model="mini-drone-a-{{index}}">
-  <!-- Compiler settings to automatically compute inertia from geometry and set mujoco_xml directory -->
+  <!-- Compiler settings to automatically compute inertia from geometry and set mujoco_models directory -->
   <compiler inertiafromgeom="true" assetdir="../assets"/>
 
   <!-- Simulation options including timestep, gravity, solver iterations, integration method, air density, and air viscosity -->
@@ -89,7 +89,7 @@
 
   <!-- Sensor definitions for the drone-->
   <sensor>
-    <accelerometer name="accelerometer{{index}}" site="drone_{{index}}_sensor_site" noise="0.1" cutoff="10"/>
-    <gyro name="gyro{{index}}" site="drone_{{index}}_sensor_site" noise="0.1" cutoff="10"/>
+    <accelerometer name="accelerometer{{index}}" site="drone_{{index}}_sensor_site" noise="0.1" cutoff="25"/>
+    <gyro name="gyro{{index}}" site="drone_{{index}}_sensor_site" noise="0.1" cutoff="25"/>
   </sensor>
 </mujoco>

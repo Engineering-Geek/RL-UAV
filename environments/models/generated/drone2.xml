@@ -1,5 +1,5 @@
 <mujoco model="mini-drone-a-2">
-  <!-- Compiler settings to automatically compute inertia from geometry and set mujoco_xml directory -->
+  <!-- Compiler settings to automatically compute inertia from geometry and set mujoco_models directory -->
   <compiler inertiafromgeom="true" assetdir="../assets"/>
 
   <!-- Simulation options including timestep, gravity, solver iterations, integration method, air density, and air viscosity -->
@@ -26,7 +26,7 @@
   </default>
 
   <worldbody>
-    <body name="drone_2" pos="-0.2886751345948132 -0.4999999999999999 .25">
+    <body name="drone_2" pos="-1.4012585384440734 1.0180739209102547 .25">
       <!-- Free joint for models body to allow free movement in the environment -->
       <freejoint name="drone_2_free_joint"/>
       <inertial pos="0 0 0" mass="0.1"/>
