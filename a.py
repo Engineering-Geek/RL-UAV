@@ -1,41 +1,48 @@
-import os
+from typing import Optional, Tuple
+import gymnasium as gym
+import numpy as np
 import ray
 from ray import tune
-from ray.rllib.algorithms.ppo import PPO
+from ray.rllib.env import MultiAgentEnv
+from ray.rllib.utils.typing import MultiAgentDict
 from ray.tune.registry import register_env
+from ray.rllib.algorithms.ppo import PPOConfig
 
-# Assuming your custom environment is defined in custom_env.py
-from environments.SimpleDroneEnv import SimpleDroneEnv
+# Assuming the SimpleHoverDroneEnv is correctly imported
+from environments.SimpleHoverDroneEnv import SimpleHoverDroneEnv
 
 
+# Ensure that the environment is registered
 def env_creator(env_config):
-    return SimpleDroneEnv(env_config.get("num_agents", 3))
+    return SimpleHoverDroneEnv(env_config)
 
 
-# Register your environment
 register_env("simple_multi_agent_env", env_creator)
 
 # Initialize Ray
 if not ray.is_initialized():
     ray.init()
 
-# Define the configuration for PPO
-config = {
-    "env": "simple_multi_agent_env",
-    "num_workers": 1,
-    "env_config": {"num_agents": 3},
-    "framework": "torch",  # or "tf" for TensorFlow
-    # Add other PPO-specific and RLlib-specific configurations as needed
-}
+# Define the PPO configuration
+config = PPOConfig() \
+    .environment(env="simple_multi_agent_env", env_config={"n_agents": 1}) \
+    .framework("torch") \
+    .rollouts(num_rollout_workers=15) \
+    .training(num_sgd_iter=10, lr=0.0003) \
+    .to_dict()
 
-# Run the training
-tune.run(
-    PPO,
+# Start the training
+results = tune.run(
+    "PPO",
     config=config,
-    stop={"training_iteration": 1000},  # Stopping condition
+    stop={"training_iteration": 1000},
     checkpoint_at_end=True,
     verbose=1
 )
 
-# Shutdown Ray
+# Output the results
+for trial in results.trials:
+    print(trial.last_result)
+
+# Shutdown Ray at the end of the training
 ray.shutdown()

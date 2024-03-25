@@ -1,8 +1,6 @@
 <mujoco model="UAV scene">
   
 	<include file="drone0.xml"/>
-	<include file="drone1.xml"/>
-	<include file="drone2.xml"/>
 
 
   <statistic center="0 0 0.1" extent="0.6" meansize=".05"/>

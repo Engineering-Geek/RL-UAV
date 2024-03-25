@@ -2,18 +2,19 @@ from typing import Type, Set, Optional, Tuple, Dict
 
 import numpy as np
 from gymnasium.spaces import Dict as DictSpace
-from mujoco import MjData, viewer, mj_resetData, mj_name2id, mj_step
-from mujoco import mjtGeom
+from mujoco import MjData, viewer, mj_resetData, mj_step
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
 from ray.rllib.utils.typing import MultiAgentDict, AgentID
 
-from environments.core.drone import Drone, Sensor, ClosestDronesSensor
+from environments.core.drone import Drone
+from environments.core.sensors import Sensor, ClosestDronesSensor
 from mujoco_xml.model_generator import get_model
 
 
 class MultiAgentDroneEnvironment(MultiAgentEnv):
     def __init__(self, n_agents: int, spacing: float, DroneClass: Type[Drone], sensors: Set[Sensor],
-                 map_bounds: np.ndarray, spawn_box: np.ndarray, dt: float, fps: int = 30, sim_rate: int = 1, n_thetas: int = None, n_phi: int = None,
+                 map_bounds: np.ndarray, spawn_box: np.ndarray, dt: float, fps: int = 30, sim_rate: int = 1,
+                 n_thetas: int = None, n_phi: int = None,
                  bullet_speed: float = 10.0, update_distances: bool = False, render_mode: str = None,
                  time_limit: float = 60.0):
         model = get_model(
@@ -48,19 +49,22 @@ class MultiAgentDroneEnvironment(MultiAgentEnv):
         self.max_distance = np.linalg.norm(self.map_bounds[1] - self.map_bounds[0])
         
         self.drones: Dict[AgentID, Drone] = self._init_drones(sensors=sensors, bullet_speed=bullet_speed)
+        self.drone_body_ids: Set[int] = {drone.body_id for drone in self.drones.values()}
         
-        self.drone_geom_ids_to_drones: Dict[int, Drone] = {drone.collision_geom_1_id: drone for drone in self.drones.values()}
+        self.drone_geom_ids_to_drones: Dict[int, Drone] = {drone.collision_geom_1_id: drone for drone in
+                                                           self.drones.values()}
         self.drone_geom_ids_to_drones.update({drone.collision_geom_2_id: drone for drone in self.drones.values()})
         self.drone_geom_ids = set(self.drone_geom_ids_to_drones.keys())
         
-        self.bullet_geom_ids_to_drones: Dict[int, Drone] = {drone.bullet_geom_id: drone for drone in self.drones.values() if drone.bullet_geom_id is not None}
+        self.bullet_geom_ids_to_drones: Dict[int, Drone] = {drone.bullet_geom_id: drone for drone in
+                                                            self.drones.values() if drone.bullet_geom_id is not None}
         self.bullet_geom_ids = set(self.bullet_geom_ids_to_drones.keys())
         
         self.boundary_geom_ids = set()
         names = ["top_wall", "bottom_wall", "left_wall", "right_wall"]
         for name in names:
-            self.boundary_geom_ids.add(mj_name2id(self.model, mjtGeom.mjGEOM_BOX, name))
-        self.boundary_geom_ids.add(mj_name2id(self.model, mjtGeom.mjGEOM_PLANE, "floor"))
+            self.boundary_geom_ids.add(self.model.geom(name).id)
+        self.boundary_geom_ids.add(self.model.geom("floor").id)
         
         self.renderer: viewer.Handle = viewer.launch_passive(self.model, self.data) if render_mode == "human" else None
         
@@ -145,6 +149,23 @@ class MultiAgentDroneEnvironment(MultiAgentEnv):
                 drone_2.crash_into_drone = True
                 continue
             # endregion
+            
+            # region Bullet to Boundary Collision
+            if drone_bullet_1 and geom_2_id in self.boundary_geom_ids:
+                drone_bullet_1.bullet_out_of_bounds = True
+                continue
+            if drone_bullet_2 and geom_1_id in self.boundary_geom_ids:
+                drone_bullet_2.bullet_out_of_bounds = True
+                continue
+            # endregion
+    
+    def out_of_bounds(self) -> None:
+        # TODO: Optimize if possible
+        for drone in self.drones.values():
+            drone.out_of_bounds = np.any(drone.data.xpos[drone.body_id] < self.map_bounds[0]) or \
+                                  np.any(drone.data.xpos[drone.body_id] > self.map_bounds[1])
+            drone.bullet_out_of_bounds = np.any(drone.data.xpos[drone.bullet_body_id] < self.map_bounds[0]) or \
+                                         np.any(drone.data.xpos[drone.bullet_body_id] > self.map_bounds[1])
     
     @property
     def observation(self) -> MultiAgentDict:
@@ -188,7 +209,7 @@ class MultiAgentDroneEnvironment(MultiAgentEnv):
                 drone.update_sensors()
         self.i += 1
     
-    def custom_update(self):
+    def custom_drone_updates(self):
         for drone in self.drones.values():
             drone.custom_update()
     
@@ -196,21 +217,22 @@ class MultiAgentDroneEnvironment(MultiAgentEnv):
         for drone in self.drones.values():
             drone.reset_default_flags()
     
-    def _step(self):
-        mj_step(self.model, self.data, self.sim_rate)
-    
-    def update(self):
-        self.update_distances_and_gammas()
-        self.update_sensors()
-        self.custom_update()
-        self.reset_default_flags()
+    def reset_custom_flags(self):
+        for drone in self.drones.values():
+            drone.reset_custom_flags()
     
     def step(self, action_dict: MultiAgentDict) -> Tuple[
         MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict, MultiAgentDict
     ]:
+        self.reset_default_flags()
+        self.reset_custom_flags()
         self.action(action_dict)
-        self._step()
-        self.update()
+        mj_step(self.model, self.data, self.sim_rate)
+        self.update_distances_and_gammas()
+        self.update_sensors()
+        self.collisions()
+        self.out_of_bounds()
+        self.custom_drone_updates()
         return self.observation, self.reward, self.done, self.truncated, self.info_log
     
     def reset(
@@ -227,6 +249,7 @@ class MultiAgentDroneEnvironment(MultiAgentEnv):
             drone.reset()
         self.update_distances_and_gammas()
         self.update_sensors()
+        self.custom_drone_updates()
         return self.observation, self.info_log
     
     def close(self) -> None:
